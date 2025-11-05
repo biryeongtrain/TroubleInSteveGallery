@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"id": "polymer-template-mod",
+	"version": "${version}",
+	"name": "Polymer Template Mod",
+	"description": "This is an example description! Tell everyone what your mod is about!",
+	"authors": [
+		"CHANGE ME"
+	],
+	"contact": {
+		"homepage": "https://polymer.pb4.eu/latest/",
+		"sources": "https://github.com/sylvxa/polymer-template-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/polymer-template-mod/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.example.PolymerTemplateMod"
+		],
+		"fabric-datagen": [
+			"com.example.datagen.PolymerTemplateModDataGenerator"
+		]
+	},
+	"mixins": [
+		"polymer-template-mod.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.16.14",
+		"minecraft": ["1.21.9", "1.21.10"],
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
