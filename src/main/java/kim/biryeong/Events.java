@@ -1,0 +1,55 @@
+package kim.biryeong;
+
+import kim.biryeong.game.manager.GameManager;
+import kim.biryeong.item.detective.NonThrowable;
+import kim.biryeong.player.role.InGamePlayerInfoProvider;
+import kim.biryeong.player.role.Role;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.world.GameMode;
+import xyz.nucleoid.stimuli.Stimuli;
+import xyz.nucleoid.stimuli.event.EventResult;
+import xyz.nucleoid.stimuli.event.item.ItemThrowEvent;
+import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
+
+public final class Events {
+    private Events() {
+        throw new IllegalStateException("Utility class");
+    }
+
+    public static void registerEvents() {
+        Stimuli.global().listen(ItemThrowEvent.EVENT, (player, slot, stack) -> {
+            if (stack.getItem() instanceof NonThrowable) {
+                return EventResult.DENY;
+            }
+            return EventResult.PASS;
+        });
+
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+            GameManager.getInstance().onPlayerJoined(handler.player);
+            if (GameManager.getInstance().isGameStarted()) {
+                var playerInfo = (InGamePlayerInfoProvider) handler.getPlayer();
+                playerInfo.tts$setRole(Role.SPECTATOR);
+            }
+        });
+
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            GameManager.getInstance().onPlayerLeft(handler.player);
+        });
+
+        Stimuli.global().listen(PlayerDeathEvent.EVENT, (victim, damageSource) -> {
+            if (damageSource.getAttacker() instanceof ServerPlayerEntity attacker) {
+                var attackerInfo = (InGamePlayerInfoProvider) attacker;
+                attackerInfo.tts$addPoints(10, InGamePlayerInfoProvider.PointReason.KILL);
+
+                victim.changeGameMode(GameMode.SPECTATOR);
+                victim.heal(victim.getMaxHealth());
+                victim.clearStatusEffects();
+                // TODO : SPAWN COLLAPSE
+            }
+            return EventResult.PASS;
+        });
+
+
+    }
+}

@@ -1,8 +1,7 @@
-package com.example.item;
+package kim.biryeong.item;
 
-import com.example.PolymerTemplateMod;
 import eu.pb4.polymer.core.api.item.PolymerItemGroupUtils;
-import eu.pb4.polymer.core.api.item.SimplePolymerItem;
+import kim.biryeong.PolymerTemplateMod;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroup;

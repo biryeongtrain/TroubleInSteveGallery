@@ -5,21 +5,21 @@
 	"name": "Polymer Template Mod",
 	"description": "This is an example description! Tell everyone what your mod is about!",
 	"authors": [
-		"CHANGE ME"
+		"biryeongtrain06"
 	],
 	"contact": {
-		"homepage": "https://polymer.pb4.eu/latest/",
-		"sources": "https://github.com/sylvxa/polymer-template-mod"
+		"homepage": "https://biryeong.kim",
+		"sources": "https://github.com/biryeongtrain/TroubleInSteveGallery"
 	},
 	"license": "CC0-1.0",
 	"icon": "assets/polymer-template-mod/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"com.example.PolymerTemplateMod"
+			"kim.biryeong.PolymerTemplateMod"
 		],
 		"fabric-datagen": [
-			"com.example.datagen.PolymerTemplateModDataGenerator"
+			"kim.biryeong.datagen.PolymerTemplateModDataGenerator"
 		]
 	},
 	"mixins": [

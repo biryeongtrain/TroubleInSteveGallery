@@ -1,6 +1,7 @@
 plugins {
 	id 'fabric-loom' version "${loom_version}"
 	id 'maven-publish'
+	id("net.ltgt.errorprone") version "4.3.0"
 }
 
 version = project.mod_version
@@ -58,6 +59,11 @@ dependencies {
 
     // Server-Translations
     modImplementation include("xyz.nucleoid:server-translations-api:${project.server_translations_version}")
+	modImplementation "xyz.nucleoid:stimuli:${project.stimuli_version}"
+
+	modImplementation include("net.kyori:adventure-platform-fabric:${project.adventure_platform_version}")
+	implementation "net.kyori:adventure-text-minimessage:${project.adventure_api_version}"
+	implementation "net.kyori:adventure-api:${project.adventure_api_version}"
 
 	// SGUI, you might want this for UI but it depends on your use case
 	// modImplementation include("eu.pb4:sgui:${project.sgui_version}")
@@ -66,6 +72,7 @@ dependencies {
     // It adds some helpful things like simple configuration and dialog utils, but no need to use if you don't want to.
     // Make sure to add rosemarylib to your dependencies and uncomment the Modrinth repository if you are using it.
     // modImplementation "maven.modrinth:rosemarylib:${project.rosemary_version}"
+	errorprone("com.google.errorprone:error_prone_core:${project.errorprone_version}")
 }
 
 processResources {
