@@ -4,6 +4,7 @@ import kim.biryeong.game.manager.GameManager;
 import kim.biryeong.item.detective.NonThrowable;
 import kim.biryeong.player.role.InGamePlayerInfoProvider;
 import kim.biryeong.player.role.Role;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.world.GameMode;
@@ -38,18 +39,23 @@ public final class Events {
         });
 
         Stimuli.global().listen(PlayerDeathEvent.EVENT, (victim, damageSource) -> {
-            if (damageSource.getAttacker() instanceof ServerPlayerEntity attacker) {
-                var attackerInfo = (InGamePlayerInfoProvider) attacker;
-                attackerInfo.tts$addPoints(10, InGamePlayerInfoProvider.PointReason.KILL);
-
+            if (GameManager.getInstance().isGameStarted()) {
+                ServerPlayerEntity attacker = damageSource.getAttacker() instanceof ServerPlayerEntity player ? player : null;
+                GameManager.getInstance().onKilled(attacker, victim, damageSource);
                 victim.changeGameMode(GameMode.SPECTATOR);
                 victim.heal(victim.getMaxHealth());
                 victim.clearStatusEffects();
                 // TODO : SPAWN COLLAPSE
+
+                return EventResult.DENY;
             }
-            return EventResult.PASS;
+            return EventResult.DENY;
         });
 
-
+        ServerTickEvents.END_SERVER_TICK.register(server -> {
+            if (GameManager.getInstance().isGameStarted()) {
+                GameManager.getInstance().tick();
+            }
+        });
     }
 }

@@ -3,11 +3,16 @@ package kim.biryeong.game.manager;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.mojang.serialization.JsonOps;
+import kim.biryeong.game.data.Date;
 import kim.biryeong.game.data.PlayerDataInstance;
+import kim.biryeong.game.data.PlayerRoundDataInstance;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.WorldSavePath;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -19,14 +24,16 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @ApiStatus.Internal
 final class GameDataManager {
+    private final Logger LOGGER = LoggerFactory.getLogger("TTS_DataManager");
     private final Gson GSON = new Gson();
     private final Map<UUID, PlayerDataInstance> DATA_MAP = new ConcurrentHashMap<>();
+    private final Map<UUID, PlayerRoundDataInstance> ROUND_DATA_MAP = new ConcurrentHashMap<>();
     private final Path TTS_PATH;
     private final GameManager gameManager;
 
     GameDataManager(GameManager gameManager) {
         this.gameManager = gameManager;
-        TTS_PATH = GameManager.server.getSavePath(WorldSavePath.ROOT).resolve("tts");
+        TTS_PATH = FabricLoader.getInstance().getGameDir().resolve("tts");
     }
 
     boolean tryToLoadPlayerData(UUID uuid) {
@@ -50,12 +57,12 @@ final class GameDataManager {
             DATA_MAP.put(uuid, data.getFirst());
             return true;
         } catch (Exception e) {
-            gameManager.LOGGER.error("cannot read player data", e);
+            LOGGER.error("cannot read player data", e);
             try {
-                gameManager.LOGGER.warn("copy backup data to");
+                LOGGER.warn("copy backup data to");
                 Files.copy(path, getPlayerDataPath(uuid + "-bak.json"));
             } catch (IOException ex) {
-                gameManager.LOGGER.error("cannot backup player data", ex);
+                LOGGER.error("cannot backup player data", ex);
             }
             return false;
         }
@@ -70,19 +77,83 @@ final class GameDataManager {
     }
 
     void saveData(UUID uuid, boolean left) {
+        try {
+            Files.createDirectories(TTS_PATH.resolve("playerData"));
+        } catch (IOException e) {
+            gameManager.LOGGER.error("cannot create directory for player data", e);
+            return;
+        }
         Path path = getPlayerDataPath(uuid.toString());
         var data = left ? DATA_MAP.remove(uuid) : DATA_MAP.get(uuid);
         var string = PlayerDataInstance.CODEC.encodeStart(JsonOps.INSTANCE, data).getOrThrow().toString();
         try {
             Files.writeString(path, string);
         } catch (Exception e) {
-            gameManager.LOGGER.error("cannot save player data", e);
-            gameManager.LOGGER.info("unsaved data : \n {}", string);
+            LOGGER.error("cannot save player data", e);
+            LOGGER.info("unsaved data : \n {}", string);
         }
     }
 
+    void saveRoundData() {
+        try {
+            Files.createDirectories(TTS_PATH.resolve("roundData"));
+        } catch (IOException e) {
+            gameManager.LOGGER.error("cannot create directory for round data", e);
+            return;
+        }
+        Date date = Date.fromNow();
+        try {
+            Files.createDirectories(TTS_PATH.resolve("roundData").resolve(date.toString()));
+        } catch (IOException e) {
+            gameManager.LOGGER.error("cannot create directory for round data", e);
+            return;
+        }
+        ROUND_DATA_MAP.forEach((uuid, roundData) -> {
+            Path path = getRoundDataPath(date, uuid.toString());
+            var string = PlayerRoundDataInstance.CODEC.encodeStart(JsonOps.INSTANCE, roundData).getOrThrow().toString();
+            try {
+                Files.writeString(path, string);
+            } catch (Exception e) {
+                LOGGER.error("cannot save round data for player {}", uuid, e);
+                LOGGER.info("unsaved round data : \n {}", string);
+            }
+        });
+
+        ROUND_DATA_MAP.clear();
+    }
+
+
+    void startToRecordKillData() {
+        var manager = GameManager.server.getPlayerManager();
+        GameManager.getInstance().getPlayers().forEach(pUUID -> {
+            ServerPlayerEntity player = manager.getPlayer(pUUID);
+            if (player == null) {
+                LOGGER.error("Player {} is not found! it can't be happened! removing this player in participant list...", pUUID);
+                GameManager.getInstance().getPlayers().remove(pUUID);
+                return;
+            }
+            ROUND_DATA_MAP.put(pUUID, PlayerRoundDataInstance.create(player));
+        });
+    }
+
+    void recordKillData(ServerPlayerEntity killer, ServerPlayerEntity victim, DamageSource damageSource) {
+        if (!GameManager.getInstance().isGameStarted()) {
+            throw new IllegalStateException("Game is not started!");
+        }
+        if (killer != null) {
+            var killerData = Objects.requireNonNull(ROUND_DATA_MAP.get(killer.getUuid()));
+            killerData.recordKillData(gameManager.gameInstanceManager.getElapsedTicks() / 20, victim, damageSource);
+        }
+        var victimData = Objects.requireNonNull(ROUND_DATA_MAP.get(victim.getUuid()));
+        victimData.recordKillData(gameManager.gameInstanceManager.getElapsedTicks() / 20, killer, damageSource);
+    }
+
     private Path getPlayerDataPath(String data) {
-        return TTS_PATH.resolve(data + ".json");
+        return TTS_PATH.resolve("playerData").resolve(data + ".json");
+    }
+
+    private Path getRoundDataPath(Date date, String data) {
+        return TTS_PATH.resolve("roundData").resolve(date.toString()).resolve( data + ".json");
     }
 
     public @NotNull PlayerDataInstance getData(ServerPlayerEntity player) {
