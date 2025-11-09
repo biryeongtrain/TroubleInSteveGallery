@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 
 class GameInstanceManager {
+    static boolean debug = true;
+
     private final Logger LOGGER = LoggerFactory.getLogger(GameInstanceManager.class);
     private final Set<UUID> participants = Collections.synchronizedSet(new HashSet<>());
     private final Set<UUID> aliveParticipants = new HashSet<>();
@@ -59,7 +61,7 @@ class GameInstanceManager {
             LOGGER.info("Elapsed seconds: {}, Alive participants: {}/{}", elapsedTicks / 20, aliveParticipants.size(), participants.size());
         }
 
-        if (this.elapsedTicks % 20 == 0) {
+        if (!debug && this.elapsedTicks % 20 == 0) {
             if (aliveTraitors == 0) { // INNOCENT WINS
                 // TODO Win logic
                 GameManager.getInstance().sendMessage("<green> 이노센트 승리 !");

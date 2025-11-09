@@ -13,6 +13,7 @@ import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
 import net.minecraft.util.Util;
 import net.minecraft.util.math.random.RandomSeed;
 import net.minecraft.util.math.random.Xoroshiro128PlusPlusRandom;
@@ -237,9 +238,18 @@ public final class GameManager {
         return this.gameInstanceManager.getParticipants();
     }
 
+    public @Nullable ServerPlayerEntity getPlayer(UUID uuid) {
+        return server.getPlayerManager().getPlayer(uuid);
+    }
+
     public void onKilled(@Nullable ServerPlayerEntity attacker, ServerPlayerEntity victim, DamageSource damageSource) {
         this.gameDataManager.recordKillData(attacker, victim, damageSource);
         this.gameInstanceManager.onPlayerKilled(attacker, victim, damageSource);
+    }
+
+    public Text byMiniMessage(String message) {
+        MiniMessage mm = MiniMessage.miniMessage();
+        return ADVENTURE.asNative(mm.deserialize(message));
     }
 
     public enum Phase {

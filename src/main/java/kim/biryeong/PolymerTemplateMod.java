@@ -2,6 +2,7 @@ package kim.biryeong;
 
 import kim.biryeong.block.ModBlocks;
 import kim.biryeong.command.CommandInitializer;
+import kim.biryeong.entity.TTSEntityType;
 import kim.biryeong.game.manager.GameManager;
 import kim.biryeong.item.ModItems;
 import net.fabricmc.api.ModInitializer;
@@ -19,7 +20,7 @@ public class PolymerTemplateMod implements ModInitializer {
 	public void onInitialize() {
 		ModBlocks.initialize();
 		ModItems.initialize();
-
+		TTSEntityType.initialize();
 		Events.registerEvents();
 		LOGGER.info("Hello Fabric world!");
 
