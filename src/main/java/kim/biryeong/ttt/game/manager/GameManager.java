@@ -27,6 +27,9 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * 게임 매니저. 사실상 게임 관련한 내용은 얘가 관리한다 보면 됨
+ */
 @SuppressWarnings("unused")
 public final class GameManager {
     private final NameableExecutor executor = new NameableExecutor(MoreExecutors.newDirectExecutorService());

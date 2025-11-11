@@ -1,5 +1,8 @@
 package kim.biryeong.ttt.player.duck;
 
+/**
+ * 자폭 폭탄 관련 데이터. 플레이어가 모두 가지고 있음
+ */
 public class SuicideBombInfo {
     private int ticks = 0;
     private boolean alreadyExloded = false;

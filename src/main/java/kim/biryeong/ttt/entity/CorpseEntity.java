@@ -7,10 +7,14 @@ import com.mojang.authlib.properties.PropertyMap;
 import eu.pb4.polymer.core.api.entity.PolymerEntity;
 import eu.pb4.polymer.core.api.entity.PolymerEntityUtils;
 import eu.pb4.polymer.virtualentity.api.ElementHolder;
+import eu.pb4.polymer.virtualentity.api.VirtualEntityUtils;
 import eu.pb4.polymer.virtualentity.api.attachment.EntityAttachment;
+import eu.pb4.polymer.virtualentity.api.elements.EntityElement;
 import eu.pb4.polymer.virtualentity.api.elements.InteractionElement;
 import eu.pb4.polymer.virtualentity.api.elements.SimpleEntityElement;
 import eu.pb4.polymer.virtualentity.api.elements.VirtualElement;
+import eu.pb4.polymer.virtualentity.api.tracker.EntityTrackedData;
+import eu.pb4.polymer.virtualentity.mixin.accessors.EntityAccessor;
 import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.mixin.MannequinEntityAccessor;
 import kim.biryeong.ttt.mixin.PlayerLikeEntityAccessor;
@@ -22,6 +26,8 @@ import net.minecraft.entity.attribute.DefaultAttributeContainer;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.data.DataTracker;
+import net.minecraft.entity.decoration.ArmorStandEntity;
+import net.minecraft.entity.decoration.MannequinEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Items;
 import net.minecraft.network.packet.Packet;
@@ -54,6 +60,7 @@ public class CorpseEntity extends LivingEntity implements PolymerEntity, Leashab
     private boolean isBurning = false;
     private int burnTicks = 0;
     private final InteractionElement interactionElement;
+    private final SimpleEntityElement element;
     private final ElementHolder holder;
     private final EntityAttachment attachment;
     public CorpseEntity(EntityType<CorpseEntity> type, World world) {
@@ -69,8 +76,7 @@ public class CorpseEntity extends LivingEntity implements PolymerEntity, Leashab
         this.interactionElement = InteractionElement.redirect(this);
         interactionElement.setSize(0.9f, 0.9f);
         this.holder.addElement(interactionElement);
-        var element = new SimpleEntityElement(EntityType.MANNEQUIN);
-
+        this.element = new SimpleEntityElement(EntityType.MANNEQUIN);
         this.attachment = new EntityAttachment(holder, this,false);
     }
 
@@ -93,7 +99,7 @@ public class CorpseEntity extends LivingEntity implements PolymerEntity, Leashab
 
     @Override
     public EntityType<?> getPolymerEntityType(PacketContext packetContext) {
-        return EntityType.PLAYER;
+        return EntityType.ARMOR_STAND;
     }
 
     @Override
@@ -127,16 +133,25 @@ public class CorpseEntity extends LivingEntity implements PolymerEntity, Leashab
 
     @Override
     public void modifyRawTrackedData(List<DataTracker.SerializedEntry<?>> data, ServerPlayerEntity player, boolean initial) {
-        data.removeIf(x -> x.id() >= PlayerLikeEntityAccessor.getMAIN_ARM_ID().id());
-        data.removeIf(x -> x.id() == POSE.id());
-        if (initial) {
-            data.add(DataTracker.SerializedEntry.of(PlayerLikeEntityAccessor.getPLAYER_MODE_CUSTOMIZATION_ID(), (byte) 0xFE));
-            data.add(DataTracker.SerializedEntry.of(MannequinEntityAccessor.getPROFILE(), ProfileComponent.ofStatic(
-                    this.gameProfile
-            )));
-            data.add(DataTracker.SerializedEntry.of(MannequinEntityAccessor.getDESCRIPTION(), Optional.empty()));
-        }
-        data.add(DataTracker.SerializedEntry.of(POSE, EntityPose.SLEEPING));
+//        data.removeIf(x -> x.id() >= PlayerLikeEntityAccessor.getMAIN_ARM_ID().id());
+//        data.removeIf(x -> x.id() == POSE.id());
+//        if (initial) {
+//            data.add(DataTracker.SerializedEntry.of(PlayerLikeEntityAccessor.getPLAYER_MODE_CUSTOMIZATION_ID(), (byte) 0xFE));
+//            data.add(DataTracker.SerializedEntry.of(MannequinEntityAccessor.getPROFILE(), ProfileComponent.ofStatic(
+//                    this.gameProfile
+//            )));
+//            data.add(DataTracker.SerializedEntry.of(MannequinEntityAccessor.getDESCRIPTION(), Optional.empty()));
+//        }
+//        data.add(DataTracker.SerializedEntry.of(POSE, EntityPose.SLEEPING));
+        byte flag = (byte) (1 << EntityTrackedData.INVISIBLE_FLAG_INDEX);
+//        if (this.isBurning) {
+//            flag |= (byte) (1 << EntityTrackedData.ON_FIRE_FLAG_INDEX);
+//        }
+        data.add(DataTracker.SerializedEntry.of(EntityTrackedData.FLAGS, flag));
+        data.add(new DataTracker.SerializedEntry<>(EntityAccessor.getNO_GRAVITY().id(), EntityAccessor.getNO_GRAVITY().dataType(), true));
+        data.add(DataTracker.SerializedEntry.of(ArmorStandEntity.ARMOR_STAND_FLAGS, (byte) (ArmorStandEntity.SMALL_FLAG | ArmorStandEntity.MARKER_FLAG)));
+
+
     }
 
     public void onTrackingStopped(ServerPlayerEntity player) {

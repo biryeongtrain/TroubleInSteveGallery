@@ -13,11 +13,18 @@ import xyz.nucleoid.stimuli.event.EventResult;
 import xyz.nucleoid.stimuli.event.item.ItemThrowEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
 
+/**
+ * Event는 2가지 방식이 있음. 패브릭에서 지원하는 Event 클래스가 있고, {@link <src = <a href="https://github.com/NucleoidMC/stimuli">Stimuli 에서 지원하는 이벤트가 있음</a>}
+ * 그래서 이거 따라서 추가하면 됨. 모르면 물어보면 될듯
+ */
 public final class Events {
     private Events() {
         throw new IllegalStateException("Utility class");
     }
 
+    /**
+     * 이 메소드는 무조건 {@link PolymerTemplateMod#onInitialize()} 에서 실행되어야함. 이때가 서버 켜지기 전인데 그때부터 등록해놔야 그 이후에 바로 등록해서 쓸수있는거지
+     */
     public static void registerEvents() {
         Stimuli.global().listen(ItemThrowEvent.EVENT, (player, slot, stack) -> {
             if (stack.getItem() instanceof NonThrowable) {

@@ -2,6 +2,16 @@ package kim.biryeong.ttt.player.duck;
 
 import kim.biryeong.ttt.player.role.Role;
 
+/**
+ * 플레이어 게임 정보를 가져오는 인터페이스임 <br>
+ * 가져오는 법 <br>
+ * <pre>
+ * {@code
+ *     ServerPlayerEntity player;
+ *     InGamePlayerInfoProvider provider = (InGamePlayerInfoProvider) player;
+ * }
+ * </pre>
+ */
 public interface InGamePlayerInfoProvider {
     Role tts$getRole();
     int tts$getPoints();

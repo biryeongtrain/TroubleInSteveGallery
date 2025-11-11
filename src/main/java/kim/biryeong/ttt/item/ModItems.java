@@ -16,6 +16,9 @@ import net.minecraft.util.Identifier;
 
 import java.util.function.Function;
 
+/**
+ * 아이템 등록하는 클래스임. 여기서 아이템을 등록해야 실제로 사용 가능함
+ */
 public class ModItems {
     public static final RegistryKey<ItemGroup> ITEM_GROUP_KEY = RegistryKey.of(Registries.ITEM_GROUP.getKey(), Identifier.of(PolymerTemplateMod.MOD_ID, "item_group"));
     public static final ItemGroup ITEM_GROUP = PolymerItemGroupUtils.builder()

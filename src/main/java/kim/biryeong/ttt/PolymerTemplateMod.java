@@ -12,6 +12,11 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
+/**
+ * ModInitializer 라고 해서 플러그인의 JavaPlugin 비슷한 거임.
+ * 이벤트는 {@link Events} 에 있음.
+ */
 public class PolymerTemplateMod implements ModInitializer {
 	public static final String MOD_ID = "polymer-template-mod";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);

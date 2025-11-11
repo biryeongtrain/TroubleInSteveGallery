@@ -14,6 +14,9 @@ import net.minecraft.util.Hand;
 import net.minecraft.world.World;
 import xyz.nucleoid.packettweaker.PacketContext;
 
+/**
+ * 자폭폭탄.
+ */
 public class SuicideBomb extends Item implements PolymerItem, NonThrowable {
 
     public SuicideBomb(Settings settings) {
