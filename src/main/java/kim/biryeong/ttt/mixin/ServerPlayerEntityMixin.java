@@ -1,0 +1,112 @@
+package kim.biryeong.ttt.mixin;
+
+import kim.biryeong.ttt.game.manager.GameManager;
+import kim.biryeong.ttt.player.duck.InGameEventProvider;
+import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
+import kim.biryeong.ttt.player.duck.SuicideBombInfo;
+import kim.biryeong.ttt.player.role.Role;
+import kim.biryeong.ttt.util.ExplosionUtil;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.explosion.ExplosionImpl;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+@Mixin(ServerPlayerEntity.class)
+public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGameEventProvider {
+    @Unique
+    private Role tts$role = Role.SPECTATOR;
+    @Unique
+    private int tts$points = 0;
+    @Unique
+    private boolean tts$alive = false;
+    @Unique
+    private boolean tts$denyToPlay = false;
+    @Unique
+    private SuicideBombInfo tts$bombInfo = new SuicideBombInfo();
+
+    @Override
+    public Role tts$getRole() {
+        return this.tts$role;
+    }
+
+    @Override
+    public int tts$getPoints() {
+        return this.tts$points;
+    }
+
+    @Override
+    public void tts$setRole(Role role) {
+        this.tts$role = role;
+    }
+
+    @Override
+    public void tts$addPoints(int points, PointReason reason) {
+        this.tts$points += points;
+    }
+
+    @Override
+    public void tts$clearPoints() {
+        this.tts$points = 0;
+    }
+
+    @Override
+    public boolean tts$isAlive() {
+        return this.tts$alive;
+    }
+
+    @Override
+    public boolean tts$denyToPlay() {
+        return this.tts$denyToPlay;
+    }
+
+    @Override
+    public void tts$fuse(int ticks) {
+        this.tts$bombInfo.setTick(ticks);
+    }
+
+    @Override
+    public boolean tts$isBombTriggered() {
+        return this.tts$bombInfo.isTriggered();
+    }
+
+    @Override
+    public void tts$clearFuse() {
+        this.tts$bombInfo.clearFuse();
+    }
+
+    @Inject(method = "tick", at = @At("TAIL"))
+    private void tts$tick(CallbackInfo ci) {
+        if (!GameManager.getInstance().isGameStarted()) {
+            return;
+        }
+
+        if (!GameManager.getInstance().isAlive((ServerPlayerEntity) (Object) this)) {
+            return;
+        }
+
+        if (this.tts$bombInfo.tick()) {
+            this.tts$explode();
+        }
+    }
+
+    private void tts$explode() {
+        ServerPlayerEntity player = (ServerPlayerEntity) (Object) this;
+        Vec3d pos = player.getTrackedPosition().getPos();
+        ServerWorld world = player.getEntityWorld().toServerWorld();
+
+        ExplosionImpl explosion = ExplosionUtil.createExplosion(
+                null,
+                pos,
+                world,
+                7f
+        );
+
+        explosion.explode();
+    }
+
+}

@@ -57,6 +57,9 @@ dependencies {
 	// Polymer
 	modImplementation include("eu.pb4:polymer-core:${project.polymer_version}")
 	modImplementation include("eu.pb4:polymer-virtual-entity:${project.polymer_version}")
+	modImplementation include("eu.pb4:polymer-resource-pack:${project.polymer_version}")
+	modImplementation include("eu.pb4:polymer-resource-pack-extras:${project.polymer_version}")
+	modImplementation include("eu.pb4:polymer-autohost:${project.polymer_version}")
 
     // Server-Translations
     modImplementation include("xyz.nucleoid:server-translations-api:${project.server_translations_version}")

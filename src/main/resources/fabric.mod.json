@@ -1,8 +1,8 @@
 {
 	"schemaVersion": 1,
-	"id": "polymer-template-mod",
+	"id": "ttt",
 	"version": "${version}",
-	"name": "Polymer Template Mod",
+	"name": "Trouble in Terrorist Town",
 	"description": "This is an example description! Tell everyone what your mod is about!",
 	"authors": [
 		"biryeongtrain06"
@@ -16,7 +16,7 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"kim.biryeong.PolymerTemplateMod"
+			"kim.biryeong.ttt.PolymerTemplateMod"
 		],
 		"fabric-datagen": [
 			"kim.biryeong.datagen.PolymerTemplateModDataGenerator"
