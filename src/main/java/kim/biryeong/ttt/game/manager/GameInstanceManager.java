@@ -1,6 +1,7 @@
 package kim.biryeong.ttt.game.manager;
 
 import kim.biryeong.ttt.game.data.PlayerDataInstance;
+import kim.biryeong.ttt.player.duck.InGameEventProvider;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
 import net.minecraft.entity.damage.DamageSource;

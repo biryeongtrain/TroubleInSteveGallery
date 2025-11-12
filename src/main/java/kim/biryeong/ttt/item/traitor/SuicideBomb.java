@@ -30,6 +30,7 @@ public class SuicideBomb extends Item implements PolymerItem, NonThrowable {
 
     @Override
     public ActionResult use(World world, PlayerEntity user, Hand hand) {
+        this.fusePlayer(user);
         return super.use(world, user, hand);
     }
 

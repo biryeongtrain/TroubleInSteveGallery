@@ -2,6 +2,8 @@ package kim.biryeong.ttt.item;
 
 import eu.pb4.polymer.core.api.item.PolymerItemGroupUtils;
 import kim.biryeong.ttt.PolymerTemplateMod;
+import kim.biryeong.ttt.item.detective.DNAScanner;
+import kim.biryeong.ttt.item.traitor.SuicideBomb;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroup;
@@ -31,6 +33,14 @@ public class ModItems {
             settings -> new SimplePolymerItem(settings, Items.CLAY_BALL),
             new Item.Settings()
     );*/
+
+    public static final Item SUICIDE_BOMB = register("jihad_bomb", SuicideBomb::new,
+            new Item.Settings().maxCount(1)
+    );
+
+    public static final Item DNA_SCANNER = register("dna_scanner", DNAScanner::new,
+            new Item.Settings().maxCount(1)
+    );
 
     public static Item register(String name, Function<Item.Settings, Item> itemFactory, Item.Settings settings) {
         RegistryKey<Item> itemKey = RegistryKey.of(RegistryKeys.ITEM, Identifier.of(PolymerTemplateMod.MOD_ID, name));

@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.MoreExecutors;
 import it.unimi.dsi.fastutil.objects.Object2IntRBTreeMap;
 import kim.biryeong.ttt.game.data.PlayerDataInstance;
+import kim.biryeong.ttt.player.duck.InGameEventProvider;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
 import net.kyori.adventure.platform.modcommon.MinecraftAudiences;
@@ -125,6 +126,14 @@ public final class GameManager {
                 data.addResult(playerResult);
                 this.gameDataManager.saveAll();
                 this.gameDataManager.saveRoundData();
+                InGameEventProvider provider = (InGameEventProvider) GameManager.getInstance().getPlayer(u);
+                if (provider == null) {
+                    return;
+                }
+                provider.tts$clearFuse();
+                if (player.getPermissionLevel() < 2) {
+                    player.getInventory().clear();
+                }
             });
         }, this.executor).thenRun(() -> {
             server.executeSync(() -> {
@@ -190,7 +199,7 @@ public final class GameManager {
     }
 
     private void spreadPlayers() {
-
+        // TODO Implementation
     }
 
     public void onPlayerJoined(ServerPlayerEntity player) {

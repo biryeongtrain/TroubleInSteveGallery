@@ -6,8 +6,12 @@ import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.duck.SuicideBombInfo;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.util.ExplosionUtil;
+import net.minecraft.network.packet.s2c.play.ExplosionS2CPacket;
+import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.collection.Pool;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.explosion.ExplosionImpl;
 import org.spongepowered.asm.mixin.Mixin;
@@ -15,6 +19,8 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import java.util.Optional;
 
 @Mixin(ServerPlayerEntity.class)
 public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGameEventProvider {
@@ -94,9 +100,10 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
         }
     }
 
+    @Unique
     private void tts$explode() {
         ServerPlayerEntity player = (ServerPlayerEntity) (Object) this;
-        Vec3d pos = player.getTrackedPosition().getPos();
+        Vec3d pos = player.getSyncedPos();
         ServerWorld world = player.getEntityWorld().toServerWorld();
 
         ExplosionImpl explosion = ExplosionUtil.createExplosion(
@@ -105,8 +112,12 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
                 world,
                 7f
         );
-
-        explosion.explode();
+        int i = explosion.explode();
+        for (ServerPlayerEntity serverPlayerEntity : world.getPlayers()) {
+            if (!(serverPlayerEntity.squaredDistanceTo(pos) < 9192.0)) continue;
+            Optional<Vec3d> optional = Optional.ofNullable(explosion.getKnockbackByPlayer().get(serverPlayerEntity));
+            serverPlayerEntity.networkHandler.sendPacket(new ExplosionS2CPacket(pos, 7f, i, optional, ParticleTypes.EXPLOSION_EMITTER, SoundEvents.ENTITY_GENERIC_EXPLODE, Pool.empty()));
+        }
     }
 
 }

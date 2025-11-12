@@ -23,19 +23,20 @@ repositories {
 		url 'https://maven.nucleoid.xyz'
 	}
 
-    // Uncomment if using Rosemary or some other Modrinth dependency
-    //exclusiveContent {
-    //    forRepository {
-    //        maven {
-    //            name = "Modrinth"
-    //            url = "https://api.modrinth.com/maven"
-    //        }
-    //    }
+//     Uncomment if using Rosemary or some other Modrinth dependency
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = "Modrinth"
+                url = "https://api.modrinth.com/maven"
+            }
+        }
 
-    //    filter {
-    //        includeGroup "maven.modrinth"
-    //    }
-    //}
+        filter {
+            includeGroup "maven.modrinth"
+        }
+    }
+	maven { url "https://maven.tomalbrc.de" }
 }
 
 
@@ -68,6 +69,12 @@ dependencies {
 	modImplementation include("net.kyori:adventure-platform-fabric:${project.adventure_platform_version}")
 	implementation "net.kyori:adventure-text-minimessage:${project.adventure_api_version}"
 	implementation "net.kyori:adventure-api:${project.adventure_api_version}"
+
+	modCompileOnly("maven.modrinth:danse:2.2.13+1.21.9") {
+		exclude module : "de.tomalbrc:blockbench-import-library"
+	}
+	modImplementation include("de.tomalbrc:blockbench-import-library:${project.bli_version}")
+
 
 	// SGUI, you might want this for UI but it depends on your use case
 	// modImplementation include("eu.pb4:sgui:${project.sgui_version}")
