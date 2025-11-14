@@ -113,15 +113,19 @@ public final class GameManager {
 
     }
 
-    public void stopGame(PlayerDataInstance.Result result) {
+    public void stopGame(PlayerDataInstance.Result innocentResult) {
         this.currentPhase.set(Phase.END_GAME);
         // TODO STOP LOGIC
         sendMessage("<red>게임 결과를 저장중입니다. 나가지 마세요...");
         CompletableFuture.runAsync(() -> {
             this.gameInstanceManager.getParticipants().forEach(u -> {
                 PlayerDataInstance data = this.gameDataManager.getData(u);
-                var player = server.getPlayerManager().getPlayer(u);
+                ServerPlayerEntity player = getPlayer(u);
+                if (player == null) {
+                    return;
+                }
                 InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
+                var result = innocentResult.getByRole(info.tts$getRole());
                 var playerResult = PlayerDataInstance.PlayerGameResult.create(info.tts$getRole(), result, result == PlayerDataInstance.Result.WIN ? 10 : 5);
                 data.addResult(playerResult);
                 this.gameDataManager.saveAll();

@@ -16,7 +16,7 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"kim.biryeong.ttt.PolymerTemplateMod"
+          "kim.biryeong.ttt.TroubleInTerroristTownMod"
 		],
 		"fabric-datagen": [
 			"kim.biryeong.datagen.PolymerTemplateModDataGenerator"

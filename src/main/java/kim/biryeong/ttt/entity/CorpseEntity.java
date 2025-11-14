@@ -57,7 +57,6 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
                 "R/dm6ic4CYbsr66Iz859K5r1MVd7y08FUvOmJgKTE5KRcPdDNe71Vv61jzh0jQ9QeZJXsHe4+58RY2LiXn7LdPKWpNd+ljK2K4n00Yjp/MM9s6ppNOAQj32LY5UuwcXPUkTSQfr2GROM9zvY93lAuILr6xodvUoIrPcbBDHgxuN6FDiE1jKfFF5z2yZIHOVZXqJPJ+0ri1sw3mjMhbO3dPdpzTW24olgR3wqbXgfEwIeiMk1En+wBtce6ZnNHNXIaMj4fFDAsMmFKqvFcPY8SjfjW/jWBDYNFUCMpxTS2XduQGhSoSlNXG+OrI93Ya/iObGeqAp9WCqFvkV8azyG1VTFfegZCFrUwKV+819B8Q3H3JzJOzES9zvhX5CDKYaE4QvWAqGzTOVw7h0NxtOh9alFkbRR2lWFiBhUMT8EqRjkb+OyBVe9vGRJOU448aLQFyuEWLICje9FAmOHRH0JFpMDEKCLvAAZKZAOx9jceQKrcrcAS0f9nnqjWLLrWMK8lWh0CNcPN1P51rQsxMUlWddNEig+RyjOLHIz/fsv3EQ7yycWkeFfkxq0NAVZGajp4T3NhtWG+WlYywafy5Gtys0Mmv4CXu6xzoUdeLhtMjwgmqfdatQlAJGiZCuSMc1KwWis2inI1YDg5jIy8BTViFBGn76mks21iUEpL4JP8FU="
         )));
         this.gameProfile = new GameProfile(UUID.fromString("a6476ab8-e7d3-4ac8-8d65-ce03f6d5e6e2"), "andlist", properties);
-        this.setAnyModel();
         this.setProfile(gameProfile);
     }
 
@@ -97,6 +96,7 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
     public static CorpseEntity createCorpse(World world, ServerPlayerEntity player) {
         var entity = new CorpseEntity(TTTEntityType.CORPSE, world);
         entity.gameProfile = player.getGameProfile();
+        entity.setProfile(entity.gameProfile);
         entity.role = ((InGamePlayerInfoProvider) player).tts$getRole();
         return entity;
     }
@@ -219,5 +219,6 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
         this.setLeftLegRotation(new EulerAngle(yaw, pitch, roll));
         this.setRightLegRotation(new EulerAngle(yaw, pitch, roll));
 //        this.setModel(PlayerModelRegistry.getModel("ascend"));
+        this.setAnyModel();
     }
 }

@@ -77,13 +77,15 @@ dependencies {
 
 
 	// SGUI, you might want this for UI but it depends on your use case
-	// modImplementation include("eu.pb4:sgui:${project.sgui_version}")
+	 modImplementation include("eu.pb4:sgui:${project.sgui_version}")
 
     // Rosemary, my server-side library.
     // It adds some helpful things like simple configuration and dialog utils, but no need to use if you don't want to.
     // Make sure to add rosemarylib to your dependencies and uncomment the Modrinth repository if you are using it.
-    // modImplementation "maven.modrinth:rosemarylib:${project.rosemary_version}"
+     modImplementation "maven.modrinth:rosemarylib:${project.rosemary_version}"
+	modImplementation include("de.tomalbrc:DialogUtils:${project.dialogutils_version}")
 	errorprone("com.google.errorprone:error_prone_core:${project.errorprone_version}")
+
 }
 
 processResources {

@@ -72,5 +72,17 @@ public class PlayerDataInstance {
         public String asString() {
             return this.name().toLowerCase(Locale.ROOT);
         }
+
+        public Result getByRole(Role role) {
+            if (this == CANCELED) {
+                return this;
+            }
+
+            if (role == Role.INNOCENT) {
+                return this;
+            }
+
+            return this == WIN ? LOSE : WIN;
+        }
     }
 }

@@ -1,5 +1,8 @@
 package kim.biryeong.ttt.player.duck;
 
+import kim.biryeong.ttt.game.manager.GameManager;
+import net.minecraft.server.network.ServerPlayerEntity;
+
 /**
  * 자폭 폭탄 관련 데이터. 플레이어가 모두 가지고 있음
  */
@@ -34,8 +37,12 @@ public class SuicideBombInfo {
         return this.ticks;
     }
 
-    public boolean tick() {
+    public boolean tick(ServerPlayerEntity player) {
         if (alreadyExloded || !triggered) {
+            return false;
+        }
+
+        if (!GameManager.getInstance().isAlive(player)) {
             return false;
         }
 

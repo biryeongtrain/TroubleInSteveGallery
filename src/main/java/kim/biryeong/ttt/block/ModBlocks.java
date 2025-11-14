@@ -1,7 +1,7 @@
 package kim.biryeong.ttt.block;
 
 import eu.pb4.polymer.core.api.item.PolymerBlockItem;
-import kim.biryeong.ttt.PolymerTemplateMod;
+import kim.biryeong.ttt.TroubleInTerroristTownMod;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
 import net.minecraft.item.BlockItem;
@@ -38,11 +38,11 @@ public class ModBlocks {
     }
 
     private static RegistryKey<Block> keyOfBlock(String name) {
-        return RegistryKey.of(RegistryKeys.BLOCK, Identifier.of(PolymerTemplateMod.MOD_ID, name));
+        return RegistryKey.of(RegistryKeys.BLOCK, Identifier.of(TroubleInTerroristTownMod.MOD_ID, name));
     }
 
     private static RegistryKey<Item> keyOfItem(String name) {
-        return RegistryKey.of(RegistryKeys.ITEM, Identifier.of(PolymerTemplateMod.MOD_ID, name));
+        return RegistryKey.of(RegistryKeys.ITEM, Identifier.of(TroubleInTerroristTownMod.MOD_ID, name));
     }
 
     public static void initialize() {}

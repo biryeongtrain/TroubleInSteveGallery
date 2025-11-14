@@ -4,6 +4,7 @@ import kim.biryeong.ttt.game.data.PlayerDataInstance;
 import kim.biryeong.ttt.player.duck.InGameEventProvider;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import org.jetbrains.annotations.Nullable;
@@ -11,11 +12,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @SuppressWarnings("unused")
 class GameInstanceManager {
     private final Logger LOGGER = LoggerFactory.getLogger(GameInstanceManager.class);
     private final Set<UUID> participants = Collections.synchronizedSet(new HashSet<>());
+    private final Set<UUID> corpseEntities = Collections.synchronizedSet(new HashSet<>());
     private final Set<UUID> aliveParticipants = new HashSet<>();
     private int aliveTraitors = 0;
 
@@ -49,6 +52,10 @@ class GameInstanceManager {
 
     public void addParticipants(List<UUID> uuids) {
         participants.addAll(uuids);
+    }
+
+    public void onGameStopped() {
+
     }
 
     public Set<UUID> getParticipants() {
@@ -104,6 +111,26 @@ class GameInstanceManager {
     public void clear() {
         participants.clear();
         elapsedTicks = 0;
+        this.corpseEntities.forEach(uuid -> {
+            var server = GameManager.server;
+            AtomicBoolean isRemoved = new AtomicBoolean(false);
+            server.getWorlds().forEach(world -> {
+                if (isRemoved.get()) {
+                    return;
+                }
+                var entity = world.getEntity(uuid);
+                if (entity == null) {
+                    return;
+                }
+
+                entity.remove(Entity.RemovalReason.DISCARDED);
+                isRemoved.set(true);
+            });
+        });
+
+        this.corpseEntities.clear();
+        this.aliveTraitors = 0;
+        this.aliveParticipants.clear();
     }
 
     public void onPlayerKilled(@Nullable ServerPlayerEntity attacker, ServerPlayerEntity victim, DamageSource source) {

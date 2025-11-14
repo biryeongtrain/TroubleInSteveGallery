@@ -1,5 +1,6 @@
 package kim.biryeong.ttt;
 
+import kim.biryeong.ttt.entity.CorpseEntity;
 import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.item.detective.NonThrowable;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
@@ -23,7 +24,7 @@ public final class Events {
     }
 
     /**
-     * 이 메소드는 무조건 {@link PolymerTemplateMod#onInitialize()} 에서 실행되어야함. 이때가 서버 켜지기 전인데 그때부터 등록해놔야 그 이후에 바로 등록해서 쓸수있는거지
+     * 이 메소드는 무조건 {@link TroubleInTerroristTownMod#onInitialize()} 에서 실행되어야함. 이때가 서버 켜지기 전인데 그때부터 등록해놔야 그 이후에 바로 등록해서 쓸수있는거지
      */
     public static void registerEvents() {
         Stimuli.global().listen(ItemThrowEvent.EVENT, (player, slot, stack) -> {
@@ -53,6 +54,7 @@ public final class Events {
                 victim.heal(victim.getMaxHealth());
                 victim.clearStatusEffects();
                 // TODO : SPAWN COLLAPSE
+                CorpseEntity.createCorpse(victim.getEntityWorld(), victim);
 
                 return EventResult.DENY;
             }

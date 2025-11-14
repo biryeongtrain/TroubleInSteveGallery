@@ -95,7 +95,7 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
             return;
         }
 
-        if (this.tts$bombInfo.tick()) {
+        if (this.tts$bombInfo.tick((ServerPlayerEntity) (Object) this)) {
             this.tts$explode();
         }
     }
@@ -110,13 +110,13 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
                 null,
                 pos,
                 world,
-                7f
+                5f
         );
         int i = explosion.explode();
         for (ServerPlayerEntity serverPlayerEntity : world.getPlayers()) {
-            if (!(serverPlayerEntity.squaredDistanceTo(pos) < 9192.0)) continue;
+            if (!(serverPlayerEntity.squaredDistanceTo(pos) < 4096.0)) continue;
             Optional<Vec3d> optional = Optional.ofNullable(explosion.getKnockbackByPlayer().get(serverPlayerEntity));
-            serverPlayerEntity.networkHandler.sendPacket(new ExplosionS2CPacket(pos, 7f, i, optional, ParticleTypes.EXPLOSION_EMITTER, SoundEvents.ENTITY_GENERIC_EXPLODE, Pool.empty()));
+            serverPlayerEntity.networkHandler.sendPacket(new ExplosionS2CPacket(pos, 5f, i, optional, ParticleTypes.EXPLOSION_EMITTER, SoundEvents.ENTITY_GENERIC_EXPLODE, Pool.empty()));
         }
     }
 
