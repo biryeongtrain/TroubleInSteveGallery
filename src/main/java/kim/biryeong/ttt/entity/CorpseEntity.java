@@ -106,27 +106,10 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
         return false;
     }
 
-
-//    @Override
-//    public void onEntityPacketSent(Consumer<Packet<?>> consumer, Packet<?> packet) {
-//        if (packet instanceof EntityAttachS2CPacket attach) {
-//            consumer.accept(VirtualEntityUtils.createEntityAttachPacket(this.holder.getLeashedId(), attach.getHoldingEntityId()));
-//        }
-//    }
-
-
-
     @Override
     public boolean isInteractable() {
         return true;
     }
-
-//    @Override
-//    public void onStoppedTrackingBy(ServerPlayerEntity player) {
-//        this.onStartedTrackingBy(player);
-//        this.onTrackingStopped(player);
-//    }
-
 
     @Override
     public ActionResult interactAt(PlayerEntity player, Vec3d hitPos, Hand hand) {
@@ -143,7 +126,7 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
             if (!isRevealed) {
                 var playerRole = ((InGamePlayerInfoProvider) GameManager.getInstance().getPlayer(this.gameProfile.id())).tts$getRole();
                 if (playerRole == null) playerRole = Role.SPECTATOR;
-                var textDisplay = new TextDisplayElement(GameManager.getInstance().byMiniMessage("<#color>%s's Corpse</#color>".formatted(this.gameProfile.name()).replace("color", String.valueOf(playerRole.hexColor))));
+                var textDisplay = new TextDisplayElement(GameManager.byMiniMessage("<#color>%s's Corpse</#color>".formatted(this.gameProfile.name()).replace("color", String.valueOf(playerRole.hexColor))));
                 textDisplay.setOffset(new Vec3d(0, 1.5, 0));
                 textDisplay.setYaw(this.bodyYaw);
                 textDisplay.instantPositionUpdates();
@@ -155,7 +138,7 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
                         .replace("color", String.valueOf(playerRole.hexColor))
                 );
 
-                player.sendMessage(GameManager.getInstance().byMiniMessage("사망한 시체 첫 조사를 통해 <green>2 포인트</green> 획득!"), false);
+                player.sendMessage(GameManager.byMiniMessage("사망한 시체 첫 조사를 통해 <green>2 포인트</green> 획득!"), false);
                 InGamePlayerInfoProvider provider = (InGamePlayerInfoProvider) player;
                 provider.tts$addPoints(2, InGamePlayerInfoProvider.PointReason.ROLE_PLAYING);
             }
@@ -220,5 +203,13 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
         this.setRightLegRotation(new EulerAngle(yaw, pitch, roll));
 //        this.setModel(PlayerModelRegistry.getModel("ascend"));
         this.setAnyModel();
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    public GameProfile getGameProfile() {
+        return gameProfile;
     }
 }

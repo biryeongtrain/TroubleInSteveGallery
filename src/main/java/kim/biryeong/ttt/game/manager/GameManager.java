@@ -272,7 +272,7 @@ public final class GameManager {
         this.gameInstanceManager.onPlayerKilled(attacker, victim, damageSource);
     }
 
-    public Text byMiniMessage(String message) {
+    public static Text byMiniMessage(String message) {
         MiniMessage mm = MiniMessage.miniMessage();
         return ADVENTURE.asNative(mm.deserialize(message));
     }

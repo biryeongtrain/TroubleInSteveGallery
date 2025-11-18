@@ -44,7 +44,7 @@ public class ModItems {
     );
 
     public static final Item ASSASSIN_BOW = register("assassin_bow", AssassinBow::new,
-            new Item.Settings().maxCount(1).maxDamage(1557).enchantable(1));
+            new Item.Settings().maxCount(1).maxDamage(10).enchantable(1));
 
     public static Item register(String name, Function<Item.Settings, Item> itemFactory, Item.Settings settings) {
         RegistryKey<Item> itemKey = RegistryKey.of(RegistryKeys.ITEM, Identifier.of(TroubleInTerroristTownMod.MOD_ID, name));
