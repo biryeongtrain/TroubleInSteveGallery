@@ -12,7 +12,10 @@ import net.minecraft.world.GameMode;
 import xyz.nucleoid.stimuli.Stimuli;
 import xyz.nucleoid.stimuli.event.EventResult;
 import xyz.nucleoid.stimuli.event.item.ItemThrowEvent;
+import xyz.nucleoid.stimuli.event.player.PlayerConsumeHungerEvent;
+import xyz.nucleoid.stimuli.event.player.PlayerDamageEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
+import xyz.nucleoid.stimuli.event.player.PlayerRegenerateEvent;
 
 /**
  * Event는 2가지 방식이 있음. 패브릭에서 지원하는 Event 클래스가 있고, {@link <src = <a href="https://github.com/NucleoidMC/stimuli">Stimuli 에서 지원하는 이벤트가 있음</a>}
@@ -46,6 +49,13 @@ public final class Events {
             GameManager.getInstance().onPlayerLeft(handler.player);
         });
 
+        Stimuli.global().listen(PlayerDamageEvent.EVENT, ((player, source, amount) -> {
+            if (!GameManager.getInstance().isGameStarted()) {
+                return EventResult.DENY;
+            }
+            return EventResult.PASS;
+        }));
+
         Stimuli.global().listen(PlayerDeathEvent.EVENT, (victim, damageSource) -> {
             if (GameManager.getInstance().isGameStarted()) {
                 ServerPlayerEntity attacker = damageSource.getAttacker() instanceof ServerPlayerEntity player ? player : null;
@@ -54,13 +64,15 @@ public final class Events {
                 victim.heal(victim.getMaxHealth());
                 victim.clearStatusEffects();
                 // TODO : SPAWN COLLAPSE
-                CorpseEntity.createCorpse(victim.getEntityWorld(), victim);
-
+                var entity = CorpseEntity.createCorpse(victim.getEntityWorld(), victim, damageSource);
+                victim.getEntityWorld().spawnEntity(entity);
                 return EventResult.DENY;
             }
             return EventResult.DENY;
         });
 
+        Stimuli.global().listen(PlayerConsumeHungerEvent.EVENT, ((player, foodLevel, saturation, exhaustion) -> EventResult.DENY));
+        Stimuli.global().listen(PlayerRegenerateEvent.EVENT, ((player, amount) -> EventResult.DENY));
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             if (GameManager.getInstance().isGameStarted()) {
                 GameManager.getInstance().tick();

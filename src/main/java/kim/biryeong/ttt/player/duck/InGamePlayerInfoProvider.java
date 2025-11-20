@@ -20,6 +20,7 @@ public interface InGamePlayerInfoProvider {
     void tts$clearPoints();
     boolean tts$isAlive();
     boolean tts$denyToPlay();
+    void tts$clearSidebarTime();
 
     enum PointReason {
         KILL,

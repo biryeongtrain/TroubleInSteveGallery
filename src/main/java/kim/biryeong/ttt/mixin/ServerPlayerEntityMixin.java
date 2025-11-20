@@ -81,6 +81,11 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
     }
 
     @Override
+    public void tts$clearSidebarTime() {
+        this.sidebarDisplayedTicks = 0;
+    }
+
+    @Override
     public void tts$fuse(int ticks) {
         this.tts$bombInfo.setTick(ticks);
     }

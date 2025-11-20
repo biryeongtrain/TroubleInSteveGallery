@@ -82,8 +82,9 @@ dependencies {
     // Rosemary, my server-side library.
     // It adds some helpful things like simple configuration and dialog utils, but no need to use if you don't want to.
     // Make sure to add rosemarylib to your dependencies and uncomment the Modrinth repository if you are using it.
-	modImplementation include("de.tomalbrc:DialogUtils:${project.dialogutils_version}")
+//	modImplementation include("de.tomalbrc:DialogUtils:${project.dialogutils_version}")
 	modImplementation include("eu.pb4:sidebar-api:${project.sidebar_api_version}")
+//	modImplementation include("eu.pb4:placeholder-api:${project.papi_version}")
 	errorprone("com.google.errorprone:error_prone_core:${project.errorprone_version}")
 
 }
