@@ -11,6 +11,6 @@ public class GameDefaultSidebar extends Sidebar {
 
     {
         this.setTitle(GameManager.byMiniMessage("<red>Trouble</red> in <green>Terrorist</green> <blue>Town</blue>"));
-        this.addLines(new Supp());
+
     }
 }

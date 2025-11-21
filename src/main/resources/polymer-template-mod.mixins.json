@@ -3,6 +3,7 @@
   "package": "kim.biryeong.ttt.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "DanseMixin",
     "ExampleMixin",
     "MannequinEntityAccessor",
     "PersistentProjectileEntityAccessor",

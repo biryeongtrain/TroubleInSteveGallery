@@ -64,7 +64,7 @@ dependencies {
 
     // Server-Translations
     modImplementation include("xyz.nucleoid:server-translations-api:${project.server_translations_version}")
-	modImplementation "xyz.nucleoid:stimuli:${project.stimuli_version}"
+	modImplementation include ("xyz.nucleoid:stimuli:${project.stimuli_version}")
 
 	modImplementation include("net.kyori:adventure-platform-fabric:${project.adventure_platform_version}")
 	implementation "net.kyori:adventure-text-minimessage:${project.adventure_api_version}"
