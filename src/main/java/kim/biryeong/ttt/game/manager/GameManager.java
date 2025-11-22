@@ -10,6 +10,7 @@ import kim.biryeong.ttt.player.role.Role;
 import net.kyori.adventure.platform.modcommon.MinecraftAudiences;
 import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.MinecraftServer;
@@ -19,6 +20,7 @@ import net.minecraft.util.Util;
 import net.minecraft.util.math.random.RandomSeed;
 import net.minecraft.util.math.random.Xoroshiro128PlusPlusRandom;
 import net.minecraft.util.thread.NameableExecutor;
+import net.minecraft.world.GameMode;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -270,6 +272,11 @@ public final class GameManager {
     public void onKilled(@Nullable ServerPlayerEntity attacker, ServerPlayerEntity victim, DamageSource damageSource) {
         this.gameDataManager.recordKillData(attacker, victim, damageSource);
         this.gameInstanceManager.onPlayerKilled(attacker, victim, damageSource);
+
+        victim.changeGameMode(GameMode.SPECTATOR);
+        victim.heal(victim.getMaxHealth());
+        victim.clearStatusEffects();
+        victim.getAttributes().resetToBaseValue(EntityAttributes.ARMOR);
     }
 
     public static Text byMiniMessage(String message) {

@@ -49,20 +49,18 @@ public final class Events {
             GameManager.getInstance().onPlayerLeft(handler.player);
         });
 
-        Stimuli.global().listen(PlayerDamageEvent.EVENT, ((player, source, amount) -> {
+        Stimuli.global().listen(PlayerDamageEvent.EVENT, (player, source, amount) -> {
             if (!GameManager.getInstance().isGameStarted()) {
                 return EventResult.DENY;
             }
             return EventResult.PASS;
-        }));
+        });
 
         Stimuli.global().listen(PlayerDeathEvent.EVENT, (victim, damageSource) -> {
             if (GameManager.getInstance().isGameStarted()) {
                 ServerPlayerEntity attacker = damageSource.getAttacker() instanceof ServerPlayerEntity player ? player : null;
                 GameManager.getInstance().onKilled(attacker, victim, damageSource);
-                victim.changeGameMode(GameMode.SPECTATOR);
-                victim.heal(victim.getMaxHealth());
-                victim.clearStatusEffects();
+
                 // TODO : SPAWN COLLAPSE
                 var entity = CorpseEntity.createCorpse(victim.getEntityWorld(), victim, damageSource);
                 victim.getEntityWorld().spawnEntity(entity);
@@ -71,8 +69,8 @@ public final class Events {
             return EventResult.DENY;
         });
 
-        Stimuli.global().listen(PlayerConsumeHungerEvent.EVENT, ((player, foodLevel, saturation, exhaustion) -> EventResult.DENY));
-        Stimuli.global().listen(PlayerRegenerateEvent.EVENT, ((player, amount) -> EventResult.DENY));
+        Stimuli.global().listen(PlayerConsumeHungerEvent.EVENT, (player, foodLevel, saturation, exhaustion) -> EventResult.DENY);
+        Stimuli.global().listen(PlayerRegenerateEvent.EVENT, (player, amount) -> EventResult.DENY);
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             if (GameManager.getInstance().isGameStarted()) {
                 GameManager.getInstance().tick();

@@ -70,7 +70,11 @@ dependencies {
 	implementation "net.kyori:adventure-text-minimessage:${project.adventure_api_version}"
 	implementation "net.kyori:adventure-api:${project.adventure_api_version}"
 
-	modCompileOnly("maven.modrinth:danse:2.2.13+1.21.9") {
+	modImplementation ("maven.modrinth:danse:2.2.13+1.21.9") {
+		exclude module : "de.tomalbrc:blockbench-import-library"
+	}
+	modImplementation include("de.tomalbrc:DialogUtils:${project.dialogutils_version}")
+	{
 		exclude module : "de.tomalbrc:blockbench-import-library"
 	}
 	modImplementation include("de.tomalbrc:blockbench-import-library:${project.bli_version}")
@@ -134,5 +138,19 @@ publishing {
 		// Notice: This block does NOT have the same function as the block in the top level.
 		// The repositories here will be used for publishing your artifact, not for
 		// retrieving dependencies.
+	}
+
+	loom {
+		runs {
+			datagen {
+//			server()
+				client()
+				name = "Data Generation"
+				runDir = "build/datagen"
+				vmArg("-Dfabric-api.datagen")
+				vmArg("-Dfabric-api.datagen.modid=ttt")
+				vmArg("-Dfabric-api.datagen.output-dir=${file("src/main/generated")}")
+			}
+		}
 	}
 }
