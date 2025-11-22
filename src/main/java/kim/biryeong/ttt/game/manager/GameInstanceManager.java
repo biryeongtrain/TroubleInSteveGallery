@@ -73,7 +73,7 @@ class GameInstanceManager {
                 // TODO Win logic
                 GameManager.getInstance().sendMessage("<green> 이노센트 승리 !");
                 GameManager.getInstance().stopGame(PlayerDataInstance.Result.WIN);
-            } else if (aliveTraitors * 2 > this.aliveParticipants.size()) {  // on alive traitors are half or more of alive participants
+            } else if (aliveTraitors == this.aliveParticipants.size()) {  // on alive traitors are half or more of alive participants
                 // traitor wins
                 // TODO : win logic
                 GameManager.getInstance().sendMessage("<red> 트레이터 승리 !");
