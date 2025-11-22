@@ -19,15 +19,23 @@ import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
+import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 /**
  * 아이템 등록하는 클래스임. 여기서 아이템을 등록해야 실제로 사용 가능함
  */
 public class ModItems {
+    public static final Map<Item, BiConsumer<Item, ServerPlayerEntity>> INNOCENT_ITEM_CALLBACKS = Map.of(
+            // ModItems.ROLE_CHECKER, RoleChecker::giveDetectiveKit
+    );
+
+
     public static final RegistryKey<ItemGroup> ITEM_GROUP_KEY = RegistryKey.of(Registries.ITEM_GROUP.getKey(), Identifier.of(TroubleInTerroristTownMod.MOD_ID, "item_group"));
     public static final ItemGroup ITEM_GROUP = PolymerItemGroupUtils.builder()
             .icon(() -> new ItemStack(Items.CLAY_BALL))

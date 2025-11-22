@@ -2,13 +2,12 @@ package kim.biryeong.ttt;
 
 import kim.biryeong.ttt.entity.CorpseEntity;
 import kim.biryeong.ttt.game.manager.GameManager;
-import kim.biryeong.ttt.item.detective.NonThrowable;
+import kim.biryeong.ttt.util.NonThrowable;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.world.GameMode;
 import xyz.nucleoid.stimuli.Stimuli;
 import xyz.nucleoid.stimuli.event.EventResult;
 import xyz.nucleoid.stimuli.event.item.ItemThrowEvent;

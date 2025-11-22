@@ -1,7 +1,7 @@
 package kim.biryeong.ttt.item.traitor;
 
 import eu.pb4.polymer.core.api.item.PolymerItem;
-import kim.biryeong.ttt.item.detective.NonThrowable;
+import kim.biryeong.ttt.util.NonThrowable;
 import kim.biryeong.ttt.mixin.PersistentProjectileEntityAccessor;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.projectile.PersistentProjectileEntity;

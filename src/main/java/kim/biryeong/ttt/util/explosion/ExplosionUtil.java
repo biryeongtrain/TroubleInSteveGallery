@@ -1,4 +1,4 @@
-package kim.biryeong.ttt.util;
+package kim.biryeong.ttt.util.explosion;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.server.world.ServerWorld;

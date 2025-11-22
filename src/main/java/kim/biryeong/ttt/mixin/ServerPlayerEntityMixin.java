@@ -1,7 +1,6 @@
 package kim.biryeong.ttt.mixin;
 
 import eu.pb4.sidebars.api.SidebarInterface;
-import eu.pb4.sidebars.impl.SidebarAPIMod;
 import eu.pb4.sidebars.impl.SidebarHolder;
 import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.player.duck.InGameEventProvider;
@@ -9,7 +8,7 @@ import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.duck.SuicideBombInfo;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.ui.sidebar.CorpseSidebar;
-import kim.biryeong.ttt.util.ExplosionUtil;
+import kim.biryeong.ttt.util.explosion.ExplosionUtil;
 import net.minecraft.network.packet.s2c.play.ExplosionS2CPacket;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.network.ServerPlayNetworkHandler;

@@ -2,7 +2,7 @@ package kim.biryeong.ttt.item.traitor;
 
 import eu.pb4.polymer.core.api.item.PolymerItem;
 import kim.biryeong.ttt.game.manager.GameManager;
-import kim.biryeong.ttt.item.detective.NonThrowable;
+import kim.biryeong.ttt.util.NonThrowable;
 import kim.biryeong.ttt.player.duck.InGameEventProvider;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;

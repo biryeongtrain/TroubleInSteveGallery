@@ -1,4 +1,4 @@
-package kim.biryeong.ttt.util;
+package kim.biryeong.ttt.util.explosion;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;

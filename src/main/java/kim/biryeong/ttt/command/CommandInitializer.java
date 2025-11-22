@@ -10,7 +10,7 @@ import kim.biryeong.ttt.game.data.PlayerDataInstance;
 import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
-import kim.biryeong.ttt.util.ExplosionUtil;
+import kim.biryeong.ttt.util.explosion.ExplosionUtil;
 import net.minecraft.command.CommandSource;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;

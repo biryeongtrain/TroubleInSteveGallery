@@ -4,7 +4,6 @@ import eu.pb4.polymer.core.api.item.PolymerItem;
 import kim.biryeong.ttt.item.ModComponents;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.UseCooldownComponent;
-import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
