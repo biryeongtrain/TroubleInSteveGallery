@@ -4,12 +4,17 @@ import eu.pb4.polymer.core.api.item.PolymerItemGroupUtils;
 import kim.biryeong.ttt.TroubleInTerroristTownMod;
 import kim.biryeong.ttt.item.detective.DNAScanner;
 import kim.biryeong.ttt.item.traitor.AssassinBow;
+import kim.biryeong.ttt.item.traitor.BambooDagger;
 import kim.biryeong.ttt.item.traitor.SuicideBomb;
+import kim.biryeong.ttt.item.traitor.TeleporterItem;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemGroup;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.AttributeModifierSlot;
+import net.minecraft.component.type.AttributeModifiersComponent;
+import net.minecraft.component.type.UseCooldownComponent;
+import net.minecraft.entity.attribute.EntityAttributeModifier;
+import net.minecraft.entity.attribute.EntityAttributes;
+import net.minecraft.item.*;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKey;
@@ -44,7 +49,26 @@ public class ModItems {
     );
 
     public static final Item ASSASSIN_BOW = register("assassin_bow", AssassinBow::new,
-            new Item.Settings().maxCount(1).maxDamage(10).enchantable(1));
+            new Item.Settings().maxCount(1).maxDamage(10).enchantable(1).component(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, true)
+    );
+
+    public static final Item BAMBOO_DAGGER = register("bamboo_dagger", BambooDagger::new,
+            new Item.Settings().maxCount(1)
+                    .sword(ToolMaterial.NETHERITE, 0, 0)
+                    .maxDamage(1)
+                    .component(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, true)
+                    .attributeModifiers(AttributeModifiersComponent.builder()
+                            .add(EntityAttributes.ATTACK_DAMAGE, new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID,1557, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
+                    .build())
+    );
+
+    public static final Item TELEPORTER = register("teleporter", TeleporterItem::new,
+            new Item.Settings().maxCount(1).component(DataComponentTypes.USE_COOLDOWN, new UseCooldownComponent(3))
+    );
+
+    public static final Item ROLE_CHECKER = register("role_checker", kim.biryeong.ttt.item.detective.RoleChecker::new,
+            new Item.Settings().maxCount(1).component(DataComponentTypes.USE_COOLDOWN, new UseCooldownComponent(0.5f))
+    );
 
     public static Item register(String name, Function<Item.Settings, Item> itemFactory, Item.Settings settings) {
         RegistryKey<Item> itemKey = RegistryKey.of(RegistryKeys.ITEM, Identifier.of(TroubleInTerroristTownMod.MOD_ID, name));
