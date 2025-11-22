@@ -1,9 +1,11 @@
 package kim.biryeong.ttt;
 
+import eu.pb4.polymer.resourcepack.api.PolymerResourcePackUtils;
 import kim.biryeong.ttt.block.ModBlocks;
 import kim.biryeong.ttt.command.CommandInitializer;
 import kim.biryeong.ttt.entity.TTTEntityType;
 import kim.biryeong.ttt.game.manager.GameManager;
+import kim.biryeong.ttt.item.ModComponents;
 import kim.biryeong.ttt.item.ModItems;
 import net.fabricmc.api.ModInitializer;
 
@@ -23,10 +25,12 @@ public class TroubleInTerroristTownMod implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		PolymerResourcePackUtils.addModAssets(MOD_ID);
 		ModBlocks.initialize();
 		ModItems.initialize();
 		TTTEntityType.initialize();
 		Events.registerEvents();
+		ModComponents.initialize();
 		LOGGER.info("Hello Fabric world!");
 
 		ServerLifecycleEvents.SERVER_STARTING.register(GameManager::setServer);
