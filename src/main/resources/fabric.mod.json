@@ -19,7 +19,7 @@
           "kim.biryeong.ttt.TroubleInTerroristTownMod"
 		],
 		"fabric-datagen": [
-			"kim.biryeong.datagen.PolymerTemplateModDataGenerator"
+			"kim.biryeong.ttt.datagen.PolymerTemplateModDataGenerator"
 		]
 	},
 	"mixins": [
