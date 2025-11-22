@@ -1,9 +1,6 @@
 package kim.biryeong.ttt.entity;
 
-import com.google.common.collect.ImmutableMultimap;
 import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.properties.Property;
-import com.mojang.authlib.properties.PropertyMap;
 import de.tomalbrc.bil.api.AnimatedEntity;
 import de.tomalbrc.bil.core.model.Model;
 import de.tomalbrc.danse.Danse;
@@ -13,7 +10,6 @@ import de.tomalbrc.danse.registry.PlayerModelRegistry;
 import eu.pb4.polymer.virtualentity.api.attachment.EntityAttachment;
 import eu.pb4.polymer.virtualentity.api.elements.*;
 import eu.pb4.polymer.virtualentity.mixin.accessors.EntityAccessor;
-import eu.pb4.sidebars.api.Sidebar;
 import eu.pb4.sidebars.api.SidebarInterface;
 import eu.pb4.sidebars.impl.SidebarHolder;
 import kim.biryeong.ttt.game.manager.GameManager;
@@ -36,7 +32,6 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
-import java.util.UUID;
 
 @SuppressWarnings("unused")
 public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEntity, Leashable {
@@ -53,12 +48,6 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
     public CorpseEntity(EntityType<CorpseEntity> type, World world) {
         super(type, world);
         this.role = Role.SPECTATOR;
-        var properties = new PropertyMap(ImmutableMultimap.of("textures", new Property("textures",
-                "ewogICJ0aW1lc3RhbXAiIDogMTYxNDk0NDg4ODg4OSwKICAicHJvZmlsZUlkIiA6ICI1N2IzZGZiNWY4YTY0OWUyOGI1NDRlNGZmYzYzMjU2ZiIsCiAgInByb2ZpbGVOYW1lIiA6ICJYaWthcm8iLAogICJzaWduYXR1cmVSZXF1aXJlZCIgOiB0cnVlLAogICJ0ZXh0dXJlcyIgOiB7CiAgICAiU0tJTiIgOiB7CiAgICAgICJ1cmwiIDogImh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNzdmYzc1ZTBlYzAwNDAyMjMyOTZhYTRkMDhiZDI2YmU0ZDE3MmU4ZGUwNzE4NTU4ODgyMmZhZTM2M2QyMjMxOSIKICAgIH0KICB9Cn0=",
-                "R/dm6ic4CYbsr66Iz859K5r1MVd7y08FUvOmJgKTE5KRcPdDNe71Vv61jzh0jQ9QeZJXsHe4+58RY2LiXn7LdPKWpNd+ljK2K4n00Yjp/MM9s6ppNOAQj32LY5UuwcXPUkTSQfr2GROM9zvY93lAuILr6xodvUoIrPcbBDHgxuN6FDiE1jKfFF5z2yZIHOVZXqJPJ+0ri1sw3mjMhbO3dPdpzTW24olgR3wqbXgfEwIeiMk1En+wBtce6ZnNHNXIaMj4fFDAsMmFKqvFcPY8SjfjW/jWBDYNFUCMpxTS2XduQGhSoSlNXG+OrI93Ya/iObGeqAp9WCqFvkV8azyG1VTFfegZCFrUwKV+819B8Q3H3JzJOzES9zvhX5CDKYaE4QvWAqGzTOVw7h0NxtOh9alFkbRR2lWFiBhUMT8EqRjkb+OyBVe9vGRJOU448aLQFyuEWLICje9FAmOHRH0JFpMDEKCLvAAZKZAOx9jceQKrcrcAS0f9nnqjWLLrWMK8lWh0CNcPN1P51rQsxMUlWddNEig+RyjOLHIz/fsv3EQ7yycWkeFfkxq0NAVZGajp4T3NhtWG+WlYywafy5Gtys0Mmv4CXu6xzoUdeLhtMjwgmqfdatQlAJGiZCuSMc1KwWis2inI1YDg5jIy8BTViFBGn76mks21iUEpL4JP8FU="
-        )));
-        this.gameProfile = new GameProfile(UUID.fromString("a6476ab8-e7d3-4ac8-8d65-ce03f6d5e6e2"), "andlist", properties);
-        this.setProfile(gameProfile);
     }
 
     public static DefaultAttributeContainer.Builder createCorpseEntityAttributes() {
@@ -93,7 +82,8 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
     public static CorpseEntity createCorpse(World world, ServerPlayerEntity player, DamageSource source) {
         var entity = new CorpseEntity(TTTEntityType.CORPSE, world);
         entity.gameProfile = player.getGameProfile();
-        entity.setProfile(entity.gameProfile);
+        entity.playerUuid = player.getUuid();
+        entity.fetchGameProfile(entity::setProfile);
         entity.role = ((InGamePlayerInfoProvider) player).tts$getRole();
         entity.damageSource = source;
         entity.setPosition(player.getSyncedPos());
@@ -116,7 +106,6 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
         if (player.getEntityWorld().isClient()) return ActionResult.PASS;
         ServerPlayerEntity serverPlayer = (ServerPlayerEntity) player;
         var result = super.interactAt(player, hitPos, hand);
-        if (result == ActionResult.FAIL) return result;
         if (player.getMainHandStack().getItem() == Items.BLAZE_ROD) {
             this.setFireTicks(1000);
             this.isBurning = true;
@@ -125,22 +114,22 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
         }
 
         // TODO SGUI Execute
-        if (!isRevealed) {
+        if (!isRevealed && GameManager.getInstance().isAlive(serverPlayer)) {
             var playerRole = ((InGamePlayerInfoProvider) GameManager.getInstance().getPlayer(this.gameProfile.id())).tts$getRole();
             if (playerRole == null) playerRole = Role.SPECTATOR;
             this.hitboxInteraction.setCustomName(
                     GameManager.byMiniMessage(
                             "<#color>%s's Corpse</#color>"
                                     .formatted(this.gameProfile.name())
-                                    .replace("color", String.valueOf(playerRole.hexColor))
+                                    .replace("color", playerRole.hexColor)
                     )
             );
             this.hitboxInteraction.setCustomNameVisible(true);
             this.isRevealed = true;
 
             GameManager.getInstance().sendMessage("%s 님이 %s 님의 시체를 찾았습니다. 그는 <#color>%s</#color> 였습니다."
-                    .formatted(player.getStringifiedName(), this.gameProfile.name(), playerRole.name())
-                    .replace("color", String.valueOf(playerRole.hexColor))
+                    .formatted(player.getStringifiedName(), this.gameProfile.name(), playerRole.krRoleName)
+                    .replace("color", playerRole.hexColor)
             );
 
             player.sendMessage(GameManager.byMiniMessage("사망한 시체 첫 조사를 통해 <green>2 포인트</green> 획득!"), false);
@@ -165,11 +154,11 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
 
     @Override
     public void tick() {
-        super.tick();
-        if (!FabricLoader.getInstance().isDevelopmentEnvironment() && !GameManager.getInstance().isGameStarted()) {
-            this.remove(RemovalReason.DISCARDED);
+        if (this.removeIfUnNessary()) {
             return;
         }
+        super.tick();
+
         if (!this.animationPlayed) {
             this.holder
                     .getAnimator()
@@ -193,6 +182,25 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
         }
 
         this.holder.tick();
+    }
+
+    private boolean removeIfUnNessary() {
+        if (!FabricLoader.getInstance().isDevelopmentEnvironment() && (!GameManager.getInstance().isGameStarted())) {
+            this.remove(RemovalReason.DISCARDED);
+            return true;
+        }
+
+        if (GameManager.getInstance().getPlayer(this.gameProfile.id()) == null) {
+            this.remove(RemovalReason.DISCARDED);
+            return true;
+        }
+
+        if (GameManager.getInstance().isAlive(GameManager.getInstance().getPlayer(this.gameProfile.id()))) {
+            this.remove(RemovalReason.DISCARDED);
+            return true;
+        }
+
+        return false;
     }
 
     @Override
