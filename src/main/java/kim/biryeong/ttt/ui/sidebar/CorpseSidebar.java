@@ -22,7 +22,7 @@ public class CorpseSidebar extends Sidebar {
 
     public CorpseSidebar(CorpseEntity corpse, ServerPlayerEntity user) {
         super(Priority.HIGH);
-        this.userName = corpse.getGameProfile().name();
+        this.userName = corpse.getGameProfile().getName();
         this.role = corpse.getRole();
         this.source = corpse.getDamageSource();
         this.user = user;
@@ -55,7 +55,7 @@ public class CorpseSidebar extends Sidebar {
 
                 Text text = killerRecorded ?
                         GameManager.byMiniMessage("살인자 정보가 없습니다.") :
-                        GameManager.byMiniMessage("살인자 : <red>%s<red>".formatted(GameManager.getInstance().getPlayer(this.source.getAttacker().getUuid()).getStringifiedName()))
+                        GameManager.byMiniMessage("살인자 : <red>%s<red>".formatted(GameManager.getInstance().getPlayer(this.source.getAttacker().getUuid()).getGameProfile().getName()))
                 ;
 
                 this.addLines(text);

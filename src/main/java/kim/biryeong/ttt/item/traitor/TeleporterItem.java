@@ -33,7 +33,7 @@ public class TeleporterItem extends Item implements PolymerItem {
     @Override
     public ActionResult use(World world, PlayerEntity user, Hand hand) {
         var result = super.use(world, user, hand);
-        if (user.getEntityWorld().isClient()) {
+        if (user.getWorld().isClient()) {
             return ActionResult.FAIL;
         }
 

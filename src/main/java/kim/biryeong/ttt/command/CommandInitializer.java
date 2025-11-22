@@ -91,7 +91,7 @@ public class CommandInitializer {
                     }
 
                     ServerPlayerEntity player = ctx.getSource().getPlayerOrThrow();
-                    ExplosionImpl explosion = ExplosionUtil.createExplosion(null, player.getSyncedPos(), player.getEntityWorld(), 7);
+                    ExplosionImpl explosion = ExplosionUtil.createExplosion(null, player.getSyncedPos(), player.getWorld(), 7);
 
                     explosion.explode();
 

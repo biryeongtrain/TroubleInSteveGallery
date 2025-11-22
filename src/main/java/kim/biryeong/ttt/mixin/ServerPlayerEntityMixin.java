@@ -127,19 +127,19 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
     private void tts$explode() {
         ServerPlayerEntity player = (ServerPlayerEntity) (Object) this;
         Vec3d pos = player.getSyncedPos();
-        ServerWorld world = player.getEntityWorld().toServerWorld();
+        ServerWorld world = player.getWorld().toServerWorld();
 
         ExplosionImpl explosion = ExplosionUtil.createExplosion(
                 null,
                 pos,
                 world,
-                5f
+                3f
         );
-        int i = explosion.explode();
+        explosion.explode();
         for (ServerPlayerEntity serverPlayerEntity : world.getPlayers()) {
             if (!(serverPlayerEntity.squaredDistanceTo(pos) < 4096.0)) continue;
             Optional<Vec3d> optional = Optional.ofNullable(explosion.getKnockbackByPlayer().get(serverPlayerEntity));
-            serverPlayerEntity.networkHandler.sendPacket(new ExplosionS2CPacket(pos, 5f, i, optional, ParticleTypes.EXPLOSION_EMITTER, SoundEvents.ENTITY_GENERIC_EXPLODE, Pool.empty()));
+            serverPlayerEntity.networkHandler.sendPacket(new ExplosionS2CPacket(pos, Optional.ofNullable(null), ParticleTypes.EXPLOSION_EMITTER, SoundEvents.ENTITY_GENERIC_EXPLODE));
         }
     }
 

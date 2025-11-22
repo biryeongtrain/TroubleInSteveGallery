@@ -20,7 +20,7 @@ public class CorpseInfoUI extends SimpleGui {
     public CorpseInfoUI(ServerPlayerEntity player, CorpseEntity corpse) {
         super(ScreenHandlerType.GENERIC_9X1, player, true);
         this.role = corpse.getRole();
-        this.userName = corpse.getGameProfile().name();
+        this.userName = corpse.getGameProfile().getName();
     }
 
     private void initialize() {

@@ -5,6 +5,7 @@ import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.util.NonThrowable;
+import kim.biryeong.ttt.util.Sounds;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EquipmentSlot;
@@ -15,6 +16,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
@@ -40,7 +42,7 @@ public class RoleChecker extends Item implements PolymerItem, NonThrowable {
 
     @Override
     public ActionResult useOnEntity(ItemStack stack, PlayerEntity user, LivingEntity entity, Hand hand) {
-        if (entity.getEntityWorld().isClient()) {
+        if (entity.getWorld().isClient()) {
             return ActionResult.FAIL;
         }
 
@@ -52,9 +54,10 @@ public class RoleChecker extends Item implements PolymerItem, NonThrowable {
         Role role = provider.tts$getRole();
 
         Text message = GameManager.byMiniMessage("%s님의 직업은 <#color>%s</#color>입니다."
-                .formatted(player.getStringifiedName(), role.krRoleName)
+                .formatted(player.getGameProfile().getName(), role.krRoleName)
                 .replace("color", role.hexColor)
         );
+        user.getWorld().playSound(null, user.getBlockPos(), Sounds.TESTER_ITEM_USE, SoundCategory.PLAYERS, 1.0f, 1.0f);
         user.sendMessage(message, false);
         stack.decrement(1);
 

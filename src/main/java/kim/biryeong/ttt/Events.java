@@ -2,6 +2,7 @@ package kim.biryeong.ttt;
 
 import kim.biryeong.ttt.entity.CorpseEntity;
 import kim.biryeong.ttt.game.manager.GameManager;
+import kim.biryeong.ttt.ui.gui.ShopGUI;
 import kim.biryeong.ttt.util.NonThrowable;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
@@ -11,10 +12,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import xyz.nucleoid.stimuli.Stimuli;
 import xyz.nucleoid.stimuli.event.EventResult;
 import xyz.nucleoid.stimuli.event.item.ItemThrowEvent;
-import xyz.nucleoid.stimuli.event.player.PlayerConsumeHungerEvent;
-import xyz.nucleoid.stimuli.event.player.PlayerDamageEvent;
-import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
-import xyz.nucleoid.stimuli.event.player.PlayerRegenerateEvent;
+import xyz.nucleoid.stimuli.event.player.*;
 
 /**
  * Event는 2가지 방식이 있음. 패브릭에서 지원하는 Event 클래스가 있고, {@link <src = <a href="https://github.com/NucleoidMC/stimuli">Stimuli 에서 지원하는 이벤트가 있음</a>}
@@ -38,6 +36,7 @@ public final class Events {
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             GameManager.getInstance().onPlayerJoined(handler.player);
+            GameManager.DEFAULT_SIDEBAR.addPlayer(handler);
             if (GameManager.getInstance().isGameStarted()) {
                 var playerInfo = (InGamePlayerInfoProvider) handler.getPlayer();
                 playerInfo.tts$setRole(Role.SPECTATOR);
@@ -49,7 +48,7 @@ public final class Events {
         });
 
         Stimuli.global().listen(PlayerDamageEvent.EVENT, (player, source, amount) -> {
-            if (!GameManager.getInstance().isGameStarted()) {
+            if (!GameManager.getInstance().getCurrentPhase().isInProgress() || GameManager.getInstance().getCurrentPhase() == GameManager.Phase.POST_GAME) {
                 return EventResult.DENY;
             }
             return EventResult.PASS;
@@ -61,8 +60,8 @@ public final class Events {
                 GameManager.getInstance().onKilled(attacker, victim, damageSource);
 
                 // TODO : SPAWN COLLAPSE
-                var entity = CorpseEntity.createCorpse(victim.getEntityWorld(), victim, damageSource);
-                victim.getEntityWorld().spawnEntity(entity);
+                var entity = CorpseEntity.createCorpse(victim.getWorld(), victim, damageSource);
+                victim.getWorld().spawnEntity(entity);
                 return EventResult.DENY;
             }
             return EventResult.DENY;
@@ -71,8 +70,18 @@ public final class Events {
         Stimuli.global().listen(PlayerConsumeHungerEvent.EVENT, (player, foodLevel, saturation, exhaustion) -> EventResult.DENY);
         Stimuli.global().listen(PlayerRegenerateEvent.EVENT, (player, amount) -> EventResult.DENY);
         ServerTickEvents.END_SERVER_TICK.register(server -> {
-            if (GameManager.getInstance().isGameStarted()) {
+            if (GameManager.getInstance().getCurrentPhase().isInProgress()) {
                 GameManager.getInstance().tick();
+            }
+        });
+
+        Stimuli.global().listen(PlayerSwapWithOffhandEvent.EVENT, (player) -> {
+            if (GameManager.getInstance().getCurrentPhase().canShowRole()) {
+                ShopGUI gui = new ShopGUI(player);
+                gui.open();
+                return EventResult.DENY;
+            } else {
+                return EventResult.PASS;
             }
         });
     }

@@ -65,7 +65,7 @@ public class PlayerRoundDataInstance {
             return;
         }
         InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
-        String victimName = player.getStringifiedName();
+        String victimName = player.getGameProfile().getName();
         Role victimRole = info.tts$getRole();
         this.roundKillData.add(new RoundKillData(elapsedSeconds, victimName, victimRole, source.getAttacker().equals(player)));
     }

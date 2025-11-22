@@ -70,7 +70,7 @@ dependencies {
 	implementation "net.kyori:adventure-text-minimessage:${project.adventure_api_version}"
 	implementation "net.kyori:adventure-api:${project.adventure_api_version}"
 
-	modImplementation ("maven.modrinth:danse:2.2.13+1.21.9") {
+	modImplementation ("maven.modrinth:danse:2.2.13+1.21.7") {
 		exclude module : "de.tomalbrc:blockbench-import-library"
 	}
 	modImplementation include("de.tomalbrc:DialogUtils:${project.dialogutils_version}")

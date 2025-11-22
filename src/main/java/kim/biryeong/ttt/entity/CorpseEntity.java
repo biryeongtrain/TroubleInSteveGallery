@@ -51,7 +51,7 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
     }
 
     public static DefaultAttributeContainer.Builder createCorpseEntityAttributes() {
-        return PlayerLikeEntity.createLivingAttributes()
+        return LivingEntity.createLivingAttributes()
                 .add(EntityAttributes.MAX_HEALTH, 20)
                 .add(EntityAttributes.MOVEMENT_SPEED, 0.1);
     }
@@ -95,15 +95,11 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
         return false;
     }
 
-    @Override
-    public boolean isInteractable() {
-        return true;
-    }
 
     @Override
     public ActionResult interactAt(PlayerEntity player, Vec3d hitPos, Hand hand) {
         if (isBurning) return ActionResult.FAIL;
-        if (player.getEntityWorld().isClient()) return ActionResult.PASS;
+        if (player.getWorld().isClient()) return ActionResult.PASS;
         ServerPlayerEntity serverPlayer = (ServerPlayerEntity) player;
         var result = super.interactAt(player, hitPos, hand);
         if (player.getMainHandStack().getItem() == Items.BLAZE_ROD) {
@@ -115,12 +111,12 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
 
         // TODO SGUI Execute
         if (!isRevealed && GameManager.getInstance().isAlive(serverPlayer)) {
-            var playerRole = ((InGamePlayerInfoProvider) GameManager.getInstance().getPlayer(this.gameProfile.id())).tts$getRole();
+            var playerRole = ((InGamePlayerInfoProvider) GameManager.getInstance().getPlayer(this.gameProfile.getId())).tts$getRole();
             if (playerRole == null) playerRole = Role.SPECTATOR;
             this.hitboxInteraction.setCustomName(
                     GameManager.byMiniMessage(
                             "<#color>%s's Corpse</#color>"
-                                    .formatted(this.gameProfile.name())
+                                    .formatted(this.gameProfile.getName())
                                     .replace("color", playerRole.hexColor)
                     )
             );
@@ -128,7 +124,7 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
             this.isRevealed = true;
 
             GameManager.getInstance().sendMessage("%s 님이 %s 님의 시체를 찾았습니다. 그는 <#color>%s</#color> 였습니다."
-                    .formatted(player.getStringifiedName(), this.gameProfile.name(), playerRole.krRoleName)
+                    .formatted(player.getGameProfile().getName(), this.gameProfile.getName(), playerRole.krRoleName)
                     .replace("color", playerRole.hexColor)
             );
 
@@ -177,7 +173,7 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
             this.remove(RemovalReason.DISCARDED);
         }
 
-        if (this.getEntityWorld().getTime() % 20 == 1) {
+        if (this.getWorld().getTime() % 20 == 1) {
             return;
         }
 
@@ -185,17 +181,17 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
     }
 
     private boolean removeIfUnNessary() {
-        if (!FabricLoader.getInstance().isDevelopmentEnvironment() && (!GameManager.getInstance().isGameStarted())) {
+        if (!GameManager.getInstance().isGameStarted()) {
             this.remove(RemovalReason.DISCARDED);
             return true;
         }
 
-        if (GameManager.getInstance().getPlayer(this.gameProfile.id()) == null) {
+        if (GameManager.getInstance().getPlayer(this.gameProfile.getId()) == null) {
             this.remove(RemovalReason.DISCARDED);
             return true;
         }
 
-        if (GameManager.getInstance().isAlive(GameManager.getInstance().getPlayer(this.gameProfile.id()))) {
+        if (GameManager.getInstance().isAlive(GameManager.getInstance().getPlayer(this.gameProfile.getId()))) {
             this.remove(RemovalReason.DISCARDED);
             return true;
         }

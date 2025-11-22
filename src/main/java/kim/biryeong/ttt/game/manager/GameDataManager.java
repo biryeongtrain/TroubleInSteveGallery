@@ -11,6 +11,7 @@ import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -160,8 +161,8 @@ final class GameDataManager {
         return getData(player.getUuid());
     }
 
-    public @NotNull PlayerDataInstance getData(UUID uuid) {
+    public @Nullable PlayerDataInstance getData(UUID uuid) {
         // this can not be null. all online player must have their data instance
-        return Objects.requireNonNull(DATA_MAP.get(uuid));
+        return (DATA_MAP.get(uuid));
     }
 }

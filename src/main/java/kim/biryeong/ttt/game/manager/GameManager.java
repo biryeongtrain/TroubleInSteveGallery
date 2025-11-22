@@ -7,6 +7,8 @@ import kim.biryeong.ttt.game.data.PlayerDataInstance;
 import kim.biryeong.ttt.player.duck.InGameEventProvider;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
+import kim.biryeong.ttt.ui.sidebar.GameDefaultSidebar;
+import kim.biryeong.ttt.util.ShopUtil;
 import net.kyori.adventure.platform.modcommon.MinecraftAudiences;
 import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -21,6 +23,7 @@ import net.minecraft.util.math.random.RandomSeed;
 import net.minecraft.util.math.random.Xoroshiro128PlusPlusRandom;
 import net.minecraft.util.thread.NameableExecutor;
 import net.minecraft.world.GameMode;
+import net.minecraft.world.World;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -49,6 +52,7 @@ public final class GameManager {
     static MinecraftServer server;
     final Logger LOGGER = LoggerFactory.getLogger("TTS_GameManager");
     static MinecraftAudiences ADVENTURE;
+    public static GameDefaultSidebar DEFAULT_SIDEBAR;
     boolean debugMode = false;
 
     private GameManager() {
@@ -58,6 +62,7 @@ public final class GameManager {
     public static void setServer(MinecraftServer initializedServer) {
         server = initializedServer;
         ADVENTURE = MinecraftServerAudiences.of(server);
+        DEFAULT_SIDEBAR = new GameDefaultSidebar();
     }
 
     public static GameManager getInstance() {
@@ -67,8 +72,16 @@ public final class GameManager {
         return instance;
     }
 
+    public Phase getCurrentPhase() {
+        return this.currentPhase.get();
+    }
+
     public void setDebugMode(boolean debugMode) {
         this.debugMode = debugMode;
+    }
+
+    void setPhase(Phase phase) {
+        this.currentPhase.set(phase);
     }
 
     public void startGame(boolean resetPoint) {
@@ -82,10 +95,10 @@ public final class GameManager {
                     .filter(p -> !((InGamePlayerInfoProvider) p).tts$denyToPlay())
                     .toList();
 
-            this.currentPhase.set(Phase.POST_GAME);
+            this.currentPhase.set(Phase.INITIALIZE);
 
             sendMessage("<green>게임 전 초기화중... 인식 된 플레이어 수 : %s".formatted(availablePlayers.size()));
-            LOGGER.info("Player lists : {}", availablePlayers.stream().map(PlayerEntity::getStringifiedName).toList());
+            LOGGER.info("Player lists : {}", availablePlayers.stream().map(p -> p.getGameProfile().getName()).toList());
 
             if (resetPoint) {
                 sendMessage("<green> 게임 설정에 따라 모든 포인트를 초기화합니다...");
@@ -105,7 +118,7 @@ public final class GameManager {
                     this.executor).thenRun(() -> server.executeSync(() -> {
                         LOGGER.info("All background job are completed. starting game...");
                         gameInstanceManager.calculateAliveTraitors();
-                        this.currentPhase.set(Phase.MIDDLE_GAME);
+                        this.currentPhase.set(Phase.POST_GAME);
                         // TODO : make teleport etc...
                     })
             ).join();
@@ -122,6 +135,9 @@ public final class GameManager {
         CompletableFuture.runAsync(() -> {
             this.gameInstanceManager.getParticipants().forEach(u -> {
                 PlayerDataInstance data = this.gameDataManager.getData(u);
+                if (data == null) {
+                    return;
+                }
                 ServerPlayerEntity player = getPlayer(u);
                 if (player == null) {
                     return;
@@ -136,16 +152,23 @@ public final class GameManager {
                 if (provider == null) {
                     return;
                 }
+                player.getAttributeInstance(EntityAttributes.ARMOR).removeModifier(ShopUtil.ARMOR_ID);
                 provider.tts$clearFuse();
-                if (player.getPermissionLevel() < 2) {
-                    player.getInventory().clear();
-                }
             });
         }, this.executor).thenRun(() -> {
             server.executeSync(() -> {
                 this.gameInstanceManager.clear();
                 sendMessage("<green>게임 결과가 저장되었습니다.");
                 this.currentPhase.set(Phase.NOT_STARTED);
+                server.getPlayerManager().getPlayerList().forEach(u -> {
+                    var pos = server.getWorld(World.OVERWORLD).getSpawnPos();
+                    u.requestTeleportAndDismount(pos.getX(), pos.getY(), pos.getZ());
+                    u.changeGameMode(GameMode.ADVENTURE);
+                    if (u.getPermissionLevel() < 2) {
+                        u.getInventory().clear();
+                    }
+                    u.getAttributeInstance(EntityAttributes.ARMOR).removeModifier(ShopUtil.ARMOR_ID);
+                });
             });
         }).join();
     }
@@ -198,8 +221,8 @@ public final class GameManager {
             var p = server.getPlayerManager().getPlayer(u);
             var info = (InGamePlayerInfoProvider) p;
             info.tts$setRole(role);
-            info.tts$addPoints(role == Role.DETECTIVE ? 10 : 8, InGamePlayerInfoProvider.PointReason.ROLE_PLAYING);
-            builder.append(p.getStringifiedName()).append(", ");
+            info.tts$addPoints(role == Role.DETECTIVE ? 5 : 2, InGamePlayerInfoProvider.PointReason.ROLE_PLAYING);
+            builder.append(p.getGameProfile().getName()).append(", ");
             list.add(u);
         }
     }
@@ -211,7 +234,7 @@ public final class GameManager {
     public void onPlayerJoined(ServerPlayerEntity player) {
         boolean isPlayerLoaded = this.gameDataManager.tryToLoadPlayerData(player.getUuid());
         if (!isPlayerLoaded) {
-            LOGGER.info("player {} seems not loaded. creating new one...", player.getStringifiedName());
+            LOGGER.info("player {} seems not loaded. creating new one...", player.getGameProfile().getName());
             this.gameDataManager.createNewData(player.getUuid());
         }
     }
@@ -223,8 +246,10 @@ public final class GameManager {
                 var data = this.gameDataManager.getData(player);
                 var result = PlayerDataInstance.PlayerGameResult.create(info.tts$getRole(), PlayerDataInstance.Result.LOSE, 0);
             }
+            this.gameInstanceManager.onPlayerLeaved(player);
         }
         this.gameDataManager.saveData(player.getUuid(), true);
+
     }
 
     public void sendMessage(String message) {
@@ -246,7 +271,7 @@ public final class GameManager {
     }
 
     public boolean isGameInitializing() {
-        return this.currentPhase.get() == Phase.POST_GAME;
+        return this.currentPhase.get() == Phase.INITIALIZE;
     }
 
     public @NotNull PlayerDataInstance getDataInstance(UUID uuid) {
@@ -284,11 +309,39 @@ public final class GameManager {
         return ADVENTURE.asNative(mm.deserialize(message));
     }
 
-    public enum Phase {
-        NOT_STARTED,
-        POST_GAME,
-        MIDDLE_GAME,
-        END_GAME,
+    public int getLeftTicks() {
+        switch (this.currentPhase.get()) {
+            case MIDDLE_GAME:
+                return this.gameInstanceManager.getTimeLeft();
+            case OVER_TIME:
+                return this.gameInstanceManager.getOvertime();
+            case POST_GAME:
+                return this.gameInstanceManager.getPostGameWarmupTime();
+            default:
+                return Integer.MIN_VALUE;
+        }
+    }
 
+    public enum Phase {
+        NOT_STARTED("시작 전"),
+        INITIALIZE("초기화 중"),
+        POST_GAME("게임 준비 중"),
+        MIDDLE_GAME("게임 진행 중"),
+        OVER_TIME("추가 시간"),
+        END_GAME("게임 종료");
+
+        Phase(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public final String displayName;
+
+        public boolean isInProgress() {
+            return this != NOT_STARTED && this != END_GAME && this != INITIALIZE;
+        }
+
+        public boolean canShowRole() {
+            return this == OVER_TIME || this == MIDDLE_GAME;
+        }
     }
 }

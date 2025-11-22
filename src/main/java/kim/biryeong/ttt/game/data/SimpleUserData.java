@@ -15,6 +15,6 @@ public record SimpleUserData(UUID uuid, String name) {
     );
 
     public SimpleUserData(ServerPlayerEntity player) {
-        this(player.getUuid(), player.getStringifiedName());
+        this(player.getUuid(), player.getGameProfile().getName());
     }
 }

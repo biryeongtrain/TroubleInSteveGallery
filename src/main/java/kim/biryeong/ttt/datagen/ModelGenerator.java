@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.client.datagen.v1.provider.FabricModelProvider;
 import net.fabricmc.fabric.api.datagen.v1.FabricDataOutput;
 import net.minecraft.client.data.BlockStateModelGenerator;
 import net.minecraft.client.data.ItemModelGenerator;
+import net.minecraft.client.data.Models;
 
 public class ModelGenerator extends FabricModelProvider {
     public ModelGenerator(FabricDataOutput output) {
@@ -19,8 +20,8 @@ public class ModelGenerator extends FabricModelProvider {
     @Override
     public void generateItemModels(ItemModelGenerator itemModelGenerator) {
         itemModelGenerator.registerBow(ModItems.ASSASSIN_BOW);
-        itemModelGenerator.register(ModItems.DNA_SCANNER);
-        itemModelGenerator.register(ModItems.TELEPORTER);
-        itemModelGenerator.register(ModItems.SUICIDE_BOMB);
+        itemModelGenerator.register(ModItems.DNA_SCANNER, Models.GENERATED);
+        itemModelGenerator.register(ModItems.TELEPORTER, Models.GENERATED);
+        itemModelGenerator.register(ModItems.SUICIDE_BOMB, Models.GENERATED);
     }
 }

@@ -3,10 +3,13 @@ package kim.biryeong.ttt;
 import eu.pb4.polymer.resourcepack.api.PolymerResourcePackUtils;
 import kim.biryeong.ttt.block.ModBlocks;
 import kim.biryeong.ttt.command.CommandInitializer;
+import kim.biryeong.ttt.config.Config;
 import kim.biryeong.ttt.entity.TTTEntityType;
 import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.item.ModComponents;
 import kim.biryeong.ttt.item.ModItems;
+import kim.biryeong.ttt.ui.sidebar.GameDefaultSidebar;
+import kim.biryeong.ttt.util.Sounds;
 import net.fabricmc.api.ModInitializer;
 
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -31,10 +34,13 @@ public class TroubleInTerroristTownMod implements ModInitializer {
 		TTTEntityType.initialize();
 		Events.registerEvents();
 		ModComponents.initialize();
+		Config.initialize();
+		Sounds.initialize();
 		LOGGER.info("Hello Fabric world!");
 
 		ServerLifecycleEvents.SERVER_STARTING.register(GameManager::setServer);
 
 		CommandRegistrationCallback.EVENT.register((commandDispatcher, commandRegistryAccess, registrationEnvironment) -> CommandInitializer.registerCommands(commandDispatcher));
+
 	}
 }

@@ -1,7 +1,12 @@
 {
-  "item.suicide_bomb.active" : {
+  "item.jihad_bomb.active" : {
     "sounds" : [
-      ""
+      "ttt:item/jihad_bomb"
+    ]
+  },
+  "item.tester.use" : {
+    "sounds" : [
+      "ttt:item/tester_use"
     ]
   }
 }
