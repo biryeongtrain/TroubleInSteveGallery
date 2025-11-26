@@ -15,7 +15,6 @@ import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundEvents;
-import net.minecraft.util.collection.Pool;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.explosion.ExplosionImpl;
 import org.spongepowered.asm.mixin.Mixin;
@@ -36,13 +35,13 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
     @Unique
     private Role tts$role = Role.SPECTATOR;
     @Unique
-    private int tts$points = 0;
-    @Unique
     private boolean tts$alive = false;
     @Unique
     private boolean tts$denyToPlay = false;
     @Unique
     private SuicideBombInfo tts$bombInfo = new SuicideBombInfo();
+    @Unique
+    private boolean ttt$isInCombat = false;
 
     @Override
     public Role tts$getRole() {
@@ -51,7 +50,7 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
 
     @Override
     public int tts$getPoints() {
-        return this.tts$points;
+        return GameManager.getInstance().getPlayerPoint(((ServerPlayerEntity) (Object) this).getUuid());
     }
 
     @Override
@@ -61,12 +60,12 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
 
     @Override
     public void tts$addPoints(int points, PointReason reason) {
-        this.tts$points += points;
+        GameManager.getInstance().addPoint(((ServerPlayerEntity) (Object) this).getUuid(), points);
     }
 
     @Override
     public void tts$clearPoints() {
-        this.tts$points = 0;
+        GameManager.getInstance().clearPoints(((ServerPlayerEntity) (Object) this).getUuid());
     }
 
     @Override
@@ -99,6 +98,11 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
         this.tts$bombInfo.clearFuse();
     }
 
+    @Override
+    public boolean ttt$isInCombat() {
+        return this.ttt$isInCombat;
+    }
+
     @Inject(method = "tick", at = @At("TAIL"))
     private void tts$tick(CallbackInfo ci) {
         var holder = SidebarHolder.of(this.networkHandler);
@@ -126,7 +130,7 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
     @Unique
     private void tts$explode() {
         ServerPlayerEntity player = (ServerPlayerEntity) (Object) this;
-        Vec3d pos = player.getSyncedPos();
+        Vec3d pos = player.getSyncedPos().add(0, 1.5, 0);
         ServerWorld world = player.getWorld().toServerWorld();
 
         ExplosionImpl explosion = ExplosionUtil.createExplosion(
@@ -141,6 +145,16 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
             Optional<Vec3d> optional = Optional.ofNullable(explosion.getKnockbackByPlayer().get(serverPlayerEntity));
             serverPlayerEntity.networkHandler.sendPacket(new ExplosionS2CPacket(pos, Optional.ofNullable(null), ParticleTypes.EXPLOSION_EMITTER, SoundEvents.ENTITY_GENERIC_EXPLODE));
         }
+    }
+
+    @Inject(method = "enterCombat", at = @At("HEAD"))
+    private void ttt$enterCombat(CallbackInfo ci) {
+        this.ttt$isInCombat = true;
+    }
+
+    @Inject(method = "endCombat", at = @At("HEAD"))
+    private void ttt$leaveCombat(CallbackInfo ci) {
+        this.ttt$isInCombat = false;
     }
 
 }

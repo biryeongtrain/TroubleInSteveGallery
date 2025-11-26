@@ -3,10 +3,14 @@
   "package": "kim.biryeong.ttt.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "BowItemMixin",
+    "DamageTrackerAccessor",
     "DanseMixin",
     "ExampleMixin",
     "PersistentProjectileEntityAccessor",
-    "ServerPlayerEntityMixin"
+    "PersistentProjectileEntityMixin",
+    "ServerPlayerEntityMixin",
+    "block.AbstractBlockStateMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -2,13 +2,17 @@ package kim.biryeong.ttt.game.manager;
 
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.MoreExecutors;
-import it.unimi.dsi.fastutil.objects.Object2IntRBTreeMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import kim.biryeong.ttt.TroubleInTerroristTownMod;
+import kim.biryeong.ttt.config.Config;
 import kim.biryeong.ttt.game.data.PlayerDataInstance;
 import kim.biryeong.ttt.player.duck.InGameEventProvider;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.ui.sidebar.GameDefaultSidebar;
 import kim.biryeong.ttt.util.ShopUtil;
+import kim.biryeong.ttt.world.TTTMap;
 import net.kyori.adventure.platform.modcommon.MinecraftAudiences;
 import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -17,8 +21,9 @@ import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
-import net.minecraft.util.Util;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.random.RandomSeed;
 import net.minecraft.util.math.random.Xoroshiro128PlusPlusRandom;
 import net.minecraft.util.thread.NameableExecutor;
@@ -28,7 +33,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import xyz.nucleoid.map_templates.MapTemplate;
+import xyz.nucleoid.map_templates.MapTemplateSerializer;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
@@ -42,18 +50,16 @@ public final class GameManager {
     private static GameManager instance;
     private final AtomicReference<Phase> currentPhase = new AtomicReference<>(Phase.NOT_STARTED);
     private final AtomicReference<Xoroshiro128PlusPlusRandom> rand = new AtomicReference<>(new Xoroshiro128PlusPlusRandom(RandomSeed.getSeed()));
-    private final Object2IntRBTreeMap<UUID> playerWaitingPoints = Util.make(() -> {
-        Object2IntRBTreeMap<UUID> map = new Object2IntRBTreeMap<>();
-        map.defaultReturnValue(10);
-        return map;
-    });
+    private final Object2IntOpenHashMap<UUID> playerPoints = new Object2IntOpenHashMap<>();
     final GameDataManager gameDataManager = new GameDataManager(this);
     final GameInstanceManager gameInstanceManager = new GameInstanceManager();
+    final Map<Identifier, MapTemplate> templates = new Object2ObjectOpenHashMap<>();
     static MinecraftServer server;
     final Logger LOGGER = LoggerFactory.getLogger("TTS_GameManager");
     static MinecraftAudiences ADVENTURE;
     public static GameDefaultSidebar DEFAULT_SIDEBAR;
     boolean debugMode = false;
+    TTTMap currentMap;
 
     private GameManager() {
         executor.named("TTS Game Manager");
@@ -63,6 +69,7 @@ public final class GameManager {
         server = initializedServer;
         ADVENTURE = MinecraftServerAudiences.of(server);
         DEFAULT_SIDEBAR = new GameDefaultSidebar();
+        getInstance().reloadMapData(getInstance().getAllMapIds());
     }
 
     public static GameManager getInstance() {
@@ -102,11 +109,12 @@ public final class GameManager {
 
             if (resetPoint) {
                 sendMessage("<green> 게임 설정에 따라 모든 포인트를 초기화합니다...");
-                this.playerWaitingPoints.clear();
+                this.playerPoints.clear();
             }
             availablePlayers.forEach(p -> {
                 var info = (InGamePlayerInfoProvider) p;
-                if (resetPoint) info.tts$clearPoints();
+                p.getAttributeInstance(EntityAttributes.WAYPOINT_RECEIVE_RANGE).setBaseValue(0);
+                p.getAttributeInstance(EntityAttributes.WAYPOINT_TRANSMIT_RANGE).setBaseValue(25);
                 info.tts$setRole(Role.SPECTATOR);
             });
             LOGGER.info("reset all points");
@@ -116,10 +124,16 @@ public final class GameManager {
             CompletableFuture.runAsync(
                     () -> this.startGame(availablePlayers),
                     this.executor).thenRun(() -> server.executeSync(() -> {
+                        if (this.currentMap == null) {
+                            this.currentMap = this.loadMap(Identifier.of("ttt:kitchen"));
+                        }
+                        currentMap.generateWorld(server);
+
+                        ServerWorld world = currentMap.getWorld();
                         LOGGER.info("All background job are completed. starting game...");
                         gameInstanceManager.calculateAliveTraitors();
                         this.currentPhase.set(Phase.POST_GAME);
-                        // TODO : make teleport etc...
+                        currentMap.spreadPlayers(availablePlayers);
                     })
             ).join();
         } catch (Exception e) {
@@ -128,49 +142,62 @@ public final class GameManager {
 
     }
 
+    public int getPlayerPoint(UUID uuid) {
+        return this.playerPoints.getOrDefault(uuid, 0);
+    }
+
+    public void addPoint(UUID uuid, int amount) {
+        this.playerPoints.addTo(uuid, amount);
+    }
+
+    public void clearPoints(UUID uuid) {
+        this.playerPoints.removeInt(uuid);
+    }
+
     public void stopGame(PlayerDataInstance.Result innocentResult) {
         this.currentPhase.set(Phase.END_GAME);
         // TODO STOP LOGIC
         sendMessage("<red>게임 결과를 저장중입니다. 나가지 마세요...");
-        CompletableFuture.runAsync(() -> {
-            this.gameInstanceManager.getParticipants().forEach(u -> {
-                PlayerDataInstance data = this.gameDataManager.getData(u);
-                if (data == null) {
-                    return;
-                }
-                ServerPlayerEntity player = getPlayer(u);
-                if (player == null) {
-                    return;
-                }
-                InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
-                var result = innocentResult.getByRole(info.tts$getRole());
-                var playerResult = PlayerDataInstance.PlayerGameResult.create(info.tts$getRole(), result, result == PlayerDataInstance.Result.WIN ? 10 : 5);
-                data.addResult(playerResult);
-                this.gameDataManager.saveAll();
-                this.gameDataManager.saveRoundData();
-                InGameEventProvider provider = (InGameEventProvider) GameManager.getInstance().getPlayer(u);
-                if (provider == null) {
-                    return;
-                }
-                player.getAttributeInstance(EntityAttributes.ARMOR).removeModifier(ShopUtil.ARMOR_ID);
-                provider.tts$clearFuse();
-            });
-        }, this.executor).thenRun(() -> {
-            server.executeSync(() -> {
-                this.gameInstanceManager.clear();
-                sendMessage("<green>게임 결과가 저장되었습니다.");
-                this.currentPhase.set(Phase.NOT_STARTED);
-                server.getPlayerManager().getPlayerList().forEach(u -> {
-                    var pos = server.getWorld(World.OVERWORLD).getSpawnPos();
-                    u.requestTeleportAndDismount(pos.getX(), pos.getY(), pos.getZ());
-                    u.changeGameMode(GameMode.ADVENTURE);
-                    if (u.getPermissionLevel() < 2) {
-                        u.getInventory().clear();
+        CompletableFuture.runAsync(() -> this.gameInstanceManager.getParticipants().forEach(u -> {
+                    PlayerDataInstance data = this.gameDataManager.getData(u);
+                    if (data == null) {
+                        return;
                     }
-                    u.getAttributeInstance(EntityAttributes.ARMOR).removeModifier(ShopUtil.ARMOR_ID);
-                });
-            });
-        }).join();
+                    ServerPlayerEntity player = getPlayer(u);
+                    if (player == null) {
+                        return;
+                    }
+                    InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
+                    var result = innocentResult.getByRole(info.tts$getRole());
+                    var playerResult = PlayerDataInstance.PlayerGameResult.create(info.tts$getRole(), result, result == PlayerDataInstance.Result.WIN ? 10 : 5);
+                    data.addResult(playerResult);
+                    info.tts$addPoints(playerResult.gainPoints(), playerResult.win() == PlayerDataInstance.Result.WIN ? InGamePlayerInfoProvider.PointReason.WIN : InGamePlayerInfoProvider.PointReason.LOSE);
+                    this.gameDataManager.saveAll();
+                    this.gameDataManager.saveRoundData();
+                    InGameEventProvider provider = (InGameEventProvider) GameManager.getInstance().getPlayer(u);
+                    if (provider == null) {
+                        return;
+                    }
+                    player.getAttributeInstance(EntityAttributes.ARMOR).removeModifier(ShopUtil.ARMOR_ID);
+                    provider.tts$clearFuse();
+                }), this.executor)
+                .thenRun(() -> server.executeSync(() -> {
+                    this.gameInstanceManager.clear();
+                    sendMessage("<green>게임 결과가 저장되었습니다.");
+                    this.currentPhase.set(Phase.NOT_STARTED);
+                    server.getPlayerManager().getPlayerList().forEach(u -> {
+                        var pos = server.getWorld(World.OVERWORLD).getSpawnPos();
+                        u.requestTeleportAndDismount(pos.getX(), pos.getY(), pos.getZ());
+                        u.changeGameMode(GameMode.ADVENTURE);
+                        if (u.getPermissionLevel() < 2) {
+                            u.getInventory().clear();
+                        }
+                        u.getAttributeInstance(EntityAttributes.ARMOR).removeModifier(ShopUtil.ARMOR_ID);
+                        // TODO : MOVE ALL PLAYER TO SPAWN
+                    });
+                    this.currentMap.closeMap(server);
+                    this.currentMap = null;
+                })).join();
     }
 
     private void startGame(List<ServerPlayerEntity> availablePlayers) {
@@ -310,16 +337,39 @@ public final class GameManager {
     }
 
     public int getLeftTicks() {
-        switch (this.currentPhase.get()) {
-            case MIDDLE_GAME:
-                return this.gameInstanceManager.getTimeLeft();
-            case OVER_TIME:
-                return this.gameInstanceManager.getOvertime();
-            case POST_GAME:
-                return this.gameInstanceManager.getPostGameWarmupTime();
-            default:
-                return Integer.MIN_VALUE;
+        return switch (this.currentPhase.get()) {
+            case MIDDLE_GAME -> this.gameInstanceManager.getTimeLeft();
+            case OVER_TIME -> this.gameInstanceManager.getOvertime();
+            case POST_GAME -> this.gameInstanceManager.getPostGameWarmupTime();
+            default -> Integer.MIN_VALUE;
+        };
+    }
+
+    public void reloadMapData(List<Identifier> mapIds) {
+        this.templates.clear();
+        for (Identifier identifier : mapIds) {
+            try {
+                this.templates.put(identifier, MapTemplateSerializer.loadFromResource(server, identifier));
+            } catch (IOException e) {
+                LOGGER.error("cannot load map template from resource : {}", identifier, e);
+            }
         }
+    }
+
+    public List<Identifier> getAllMapIds() {
+        ArrayList<Identifier> list = new ArrayList<>(TroubleInTerroristTownMod.BUILT_IN_MAPS);
+        list.addAll(Config.getInstance().additionalMaps);
+
+        return list;
+    }
+
+    TTTMap loadMap(Identifier id) {
+        if (!this.templates.containsKey(id)) {
+            throw new IllegalArgumentException("map template not found : " + id);
+        }
+
+        MapTemplate template = this.templates.get(id);
+        return new TTTMap(id, template);
     }
 
     public enum Phase {

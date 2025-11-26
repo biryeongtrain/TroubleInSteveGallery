@@ -8,9 +8,12 @@ import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import kim.biryeong.ttt.TroubleInTerroristTownMod;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.util.Identifier;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Config {
@@ -23,7 +26,8 @@ public class Config {
                     Codec.INT.fieldOf("minPlayersToStartGame").forGetter(config -> config.minPlayersToStartGame),
                     Codec.INT.fieldOf("playTimeSeconds").forGetter(config -> config.playTimeSeconds),
                     Codec.INT.fieldOf("overTimePerKills").forGetter(config -> config.overTimePerKills),
-                    Codec.INT.fieldOf("maxOverTimeSeconds").forGetter(config -> config.maxOverTimeSeconds)
+                    Codec.INT.fieldOf("maxOverTimeSeconds").forGetter(config -> config.maxOverTimeSeconds),
+                    Identifier.CODEC.listOf().fieldOf("additionalMaps").forGetter(config -> config.additionalMaps)
             ).apply(instance, Config::new)
     );
 
@@ -31,12 +35,13 @@ public class Config {
 
     private Config() {}
 
-    private Config(int gameStartCountdownSeconds, int minPlayersToStartGame, int playTimeSeconds, int overTimePerKills, int maxOverTimeSeconds) {
+    private Config(int gameStartCountdownSeconds, int minPlayersToStartGame, int playTimeSeconds, int overTimePerKills, int maxOverTimeSeconds, List<Identifier> additionalMaps) {
         this.gameStartCountdownSeconds = gameStartCountdownSeconds;
         this.minPlayersToStartGame = minPlayersToStartGame;
         this.playTimeSeconds = playTimeSeconds;
         this.overTimePerKills = overTimePerKills;
         this.maxOverTimeSeconds = maxOverTimeSeconds;
+        this.additionalMaps = additionalMaps;
     }
 
     public static Config createNew() {
@@ -48,6 +53,7 @@ public class Config {
     public int playTimeSeconds = 240;
     public int overTimePerKills = 5;
     public int maxOverTimeSeconds = 60;
+    public List<Identifier> additionalMaps = new ArrayList<>();
 
     private static Config tryLoadConfig() {
         Path configPath = CONFIG_DIR.resolve("config.json");

@@ -2,12 +2,15 @@ package kim.biryeong.ttt;
 
 import kim.biryeong.ttt.entity.CorpseEntity;
 import kim.biryeong.ttt.game.manager.GameManager;
+import kim.biryeong.ttt.player.duck.InGameEventProvider;
 import kim.biryeong.ttt.ui.gui.ShopGUI;
 import kim.biryeong.ttt.util.NonThrowable;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.damage.DamageTypes;
 import net.minecraft.server.network.ServerPlayerEntity;
 import xyz.nucleoid.stimuli.Stimuli;
 import xyz.nucleoid.stimuli.event.EventResult;
@@ -56,7 +59,8 @@ public final class Events {
 
         Stimuli.global().listen(PlayerDeathEvent.EVENT, (victim, damageSource) -> {
             if (GameManager.getInstance().isGameStarted()) {
-                ServerPlayerEntity attacker = damageSource.getAttacker() instanceof ServerPlayerEntity player ? player : null;
+                ServerPlayerEntity attacker = damageSource.getAttacker() instanceof ServerPlayerEntity player ? player :
+                        damageSource.isOf(DamageTypes.EXPLOSION) ? getRecentDamagePlayer(victim.getPrimeAdversary()) : null;
                 GameManager.getInstance().onKilled(attacker, victim, damageSource);
 
                 // TODO : SPAWN COLLAPSE
@@ -68,7 +72,17 @@ public final class Events {
         });
 
         Stimuli.global().listen(PlayerConsumeHungerEvent.EVENT, (player, foodLevel, saturation, exhaustion) -> EventResult.DENY);
-        Stimuli.global().listen(PlayerRegenerateEvent.EVENT, (player, amount) -> EventResult.DENY);
+        Stimuli.global().listen(PlayerRegenerateEvent.EVENT, (player, amount) -> {
+            InGameEventProvider info = (InGameEventProvider) player;
+            if (info.ttt$isInCombat()) {
+                return EventResult.DENY;
+            }
+            if (player.age % 10 == 0 || player.getHealth() >= 14) {
+                return EventResult.PASS;
+            }
+
+            return EventResult.DENY;
+        });
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             if (GameManager.getInstance().getCurrentPhase().isInProgress()) {
                 GameManager.getInstance().tick();
@@ -84,5 +98,9 @@ public final class Events {
                 return EventResult.PASS;
             }
         });
+    }
+
+    private static ServerPlayerEntity getRecentDamagePlayer(Entity attacker) {
+        return attacker instanceof ServerPlayerEntity player ? player : null;
     }
 }

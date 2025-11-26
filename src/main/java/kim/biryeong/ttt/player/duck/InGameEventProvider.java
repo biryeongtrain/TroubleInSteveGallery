@@ -14,4 +14,5 @@ public interface InGameEventProvider {
     void tts$fuse(int ticks);
     boolean tts$isBombTriggered();
     void tts$clearFuse();
+    boolean ttt$isInCombat();
 }

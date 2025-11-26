@@ -36,6 +36,10 @@ public enum Role implements StringIdentifiable {
         this.krRoleName = krRoleName;
     }
 
+    public int getHexAsInt() {
+        return Integer.parseInt(this.hexColor, 16);
+    }
+
     @Override
     public String asString() {
         return this.name().toLowerCase(Locale.ROOT);

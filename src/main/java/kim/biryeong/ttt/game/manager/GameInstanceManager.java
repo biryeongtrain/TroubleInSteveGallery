@@ -1,11 +1,19 @@
 package kim.biryeong.ttt.game.manager;
 
+import it.unimi.dsi.fastutil.ints.IntList;
 import kim.biryeong.ttt.config.Config;
 import kim.biryeong.ttt.game.data.PlayerDataInstance;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
+import kim.biryeong.ttt.util.Scheduler;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.FireworkExplosionComponent;
+import net.minecraft.component.type.FireworksComponent;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.projectile.FireworkRocketEntity;
+import net.minecraft.item.Items;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -28,6 +36,8 @@ class GameInstanceManager {
     private int overtimePerKill = 0;
     private int elapsedTicks = 0;
     private boolean isOverTime = false;
+    private boolean gameEndRequested = false;
+
 
     GameInstanceManager() {
         if (initialized) {
@@ -85,7 +95,7 @@ class GameInstanceManager {
     }
 
     void tick() {
-        if (GameManager.getInstance().getCurrentPhase() == GameManager.Phase.POST_GAME)  {
+        if (GameManager.getInstance().getCurrentPhase() == GameManager.Phase.POST_GAME) {
             if (this.warmupTimeTick <= 0) {
                 GameManager.getInstance().setPhase(GameManager.Phase.MIDDLE_GAME);
             }
@@ -100,12 +110,12 @@ class GameInstanceManager {
             if (aliveTraitors == 0) { // INNOCENT WINS
                 // TODO Win logic
                 GameManager.getInstance().sendMessage("<green> 이노센트 승리 !");
-                GameManager.getInstance().stopGame(PlayerDataInstance.Result.WIN);
+                this.requestToWin(PlayerDataInstance.Result.WIN);
             } else if (aliveTraitors == this.aliveParticipants.size()) {  // on alive traitors are half or more of alive participants
                 // traitor wins
                 // TODO : win logic
                 GameManager.getInstance().sendMessage("<red> 트레이터 승리 !");
-                GameManager.getInstance().stopGame(PlayerDataInstance.Result.LOSE);
+                this.requestToWin(PlayerDataInstance.Result.LOSE);
             }
         }
 
@@ -126,7 +136,7 @@ class GameInstanceManager {
             if (elapsedTicks >= gamePlayTimeTicks + overtime) {
                 // time over, innocent wins
                 GameManager.getInstance().sendMessage("<green> 시간 초과! 이노센트 승리 !");
-                GameManager.getInstance().stopGame(PlayerDataInstance.Result.WIN);
+                this.requestToWin(PlayerDataInstance.Result.WIN);
 
                 return;
             }
@@ -140,6 +150,42 @@ class GameInstanceManager {
         }
 
         elapsedTicks++;
+    }
+
+    private void requestToWin(PlayerDataInstance.Result result) {
+        MinecraftServer server = GameManager.server;
+        this.aliveParticipants.forEach(uuid -> {
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
+            if (player == null) {
+                return;
+            }
+            boolean shouldSpawnFirework = (result == PlayerDataInstance.Result.WIN) ^ isInnocent(player);
+            if (!shouldSpawnFirework) {
+                return;
+            }
+            int color = result == PlayerDataInstance.Result.WIN ? Role.INNOCENT.getHexAsInt() : Role.TRAITOR.getHexAsInt();
+            var pos = player.getPos();
+            var fireworkStack = Items.FIREWORK_ROCKET.asItem().getDefaultStack();
+            fireworkStack.set(
+                    DataComponentTypes.FIREWORKS,
+                    new FireworksComponent(
+                            1,
+                            List.of(new FireworkExplosionComponent(
+                                            FireworkExplosionComponent.Type.STAR,
+                                            IntList.of(color),
+                                            IntList.of(color),
+                                            false,
+                                            false
+                                    )
+                            )
+                    )
+            );
+            FireworkRocketEntity firework = new FireworkRocketEntity(player.getWorld(), pos.x, pos.y, pos.z, fireworkStack);
+            player.getWorld().spawnEntity(firework);
+        });
+
+        Scheduler.INSTANCE.submit((s) -> {GameManager.getInstance().stopGame(result);}, 100);
+
     }
 
     public boolean isInnocent(ServerPlayerEntity player) {
@@ -203,7 +249,7 @@ class GameInstanceManager {
                 overtime += overtimePerKill * 20;
             }
         } else {
-            LOGGER.info("Player {} ({}) was killed. (Source: {})", victim.getGameProfile().getName(), victimInfo.tts$getRole() ,source.getName());
+            LOGGER.info("Player {} ({}) was killed. (Source: {})", victim.getGameProfile().getName(), victimInfo.tts$getRole(), source.getName());
         }
         if (victimInfo.tts$getRole() == Role.TRAITOR) {
             aliveTraitors--;
