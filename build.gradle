@@ -78,7 +78,8 @@ dependencies {
 		exclude module : "de.tomalbrc:blockbench-import-library"
 	}
 	modImplementation include("de.tomalbrc:blockbench-import-library:${project.bli_version}")
-
+	modImplementation include("xyz.nucleoid:fantasy:${project.fantasy_version}")
+	modImplementation include("xyz.nucleoid:map-templates:${project.map_templates}")
 
 	// SGUI, you might want this for UI but it depends on your use case
 	 modImplementation include("eu.pb4:sgui:${project.sgui_version}")
