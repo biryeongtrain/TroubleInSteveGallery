@@ -15,5 +15,7 @@ public class PolymerTemplateModDataGenerator implements DataGeneratorEntrypoint 
 
 		var pack = generator.createPack();
 		pack.addProvider(ModelGenerator::new);
+		pack.addProvider(TTTKoreanProvider::new);
+		pack.addProvider(TTTEnglishProvider::new);
 	}
 }
