@@ -14,7 +14,7 @@ public class ShopGUI extends SimpleGui {
     private final InGamePlayerInfoProvider provider;
 
     public ShopGUI(ServerPlayerEntity player) {
-        super(ScreenHandlerType.GENERIC_9X3, player, false);
+        super(ScreenHandlerType.GENERIC_9X3, player, true);
     }
 
     {
@@ -23,6 +23,9 @@ public class ShopGUI extends SimpleGui {
         List<ShopElement> entries = ShopUtil.getShopElements(provider.tts$getRole());
         entries.forEach(shopElement -> {
             var builder = new GuiElementBuilder().setItem(shopElement.item());
+            if (shopElement.name() != null) {
+                builder.setItemName(shopElement.name());
+            }
             shopElement.descriptions().forEach(builder::addLoreLine);
             builder.setCallback((index, clickType, type) -> {
                 int playerPoints = provider.tts$getPoints();

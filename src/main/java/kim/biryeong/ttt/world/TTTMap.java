@@ -38,7 +38,7 @@ public class TTTMap {
 
     }
 
-    public void generateWorld(MinecraftServer server) {
+    public void generateWorld(MinecraftServer server, boolean persistent) {
         RuntimeWorldConfig config = new RuntimeWorldConfig()
                 .setGenerator(new TemplateChunkGenerator(server, this.template))
                 .setDifficulty(Difficulty.PEACEFUL);
@@ -46,6 +46,7 @@ public class TTTMap {
         var gameRules = config.getGameRules();
         gameRules.set(GameRules.RANDOM_TICK_SPEED, 0);
         setDefaultRule(gameRules, GameRules.DO_MOB_SPAWNING, false);
+        setDefaultRule(gameRules, GameRules.DO_PATROL_SPAWNING, false);
         setDefaultRule(gameRules, GameRules.DO_DAYLIGHT_CYCLE, false);
         setDefaultRule(gameRules, GameRules.DO_WEATHER_CYCLE, false);
         setDefaultRule(gameRules, GameRules.ANNOUNCE_ADVANCEMENTS, false);
@@ -56,8 +57,11 @@ public class TTTMap {
         setDefaultRule(gameRules, GameRules.DO_VINES_SPREAD, false);
         setDefaultRule(gameRules, GameRules.REDUCED_DEBUG_INFO, true);
         setDefaultRule(gameRules, GameRules.SHOW_DEATH_MESSAGES, false);
+        setDefaultRule(gameRules, GameRules.DO_TRADER_SPAWNING, false);
 
-        var worldHandle = Fantasy.get(server).getOrOpenPersistentWorld(instanceId, config);
+
+        var worldHandle = persistent ? Fantasy.get(server).getOrOpenPersistentWorld(instanceId, config) :
+                Fantasy.get(server).openTemporaryWorld(config);
         this.world = worldHandle.asWorld();
 
         GameManager.getInstance().sendMessage("월드 준비 완료. 로드된 맵 : <green>%s</green>".formatted(instanceId.toString()));
@@ -68,13 +72,7 @@ public class TTTMap {
     }
 
     public void spreadPlayers(List<ServerPlayerEntity> participants) {
-        participants.forEach(player -> {
-            Xoroshiro128PlusPlusRandom random = GameManager.getInstance().getRandom();
-            int index = random.nextInt(spawns.size());
-            var location = this.spawns.get(index).getBounds().sampleBlock(random);
-
-            player.teleportTo(new TeleportTarget(this.world, location.toCenterPos(), Vec3d.ZERO, player.getYaw(), player.getPitch(), TeleportTarget.NO_OP));
-        });
+        participants.forEach(this::spawnPlayer);
     }
 
     public void closeMap(MinecraftServer server) {
@@ -88,5 +86,13 @@ public class TTTMap {
         if (!rules.contains(key)) {
             rules.set(key, value);
         }
+    }
+
+    public void spawnPlayer(ServerPlayerEntity player) {
+        Xoroshiro128PlusPlusRandom random = GameManager.getInstance().getRandom();
+        int index = random.nextInt(spawns.size());
+        var location = this.spawns.get(index).getBounds().sampleBlock(random);
+
+        player.teleportTo(new TeleportTarget(this.world, location.toCenterPos(), Vec3d.ZERO, player.getYaw(), player.getPitch(), TeleportTarget.NO_OP));
     }
 }

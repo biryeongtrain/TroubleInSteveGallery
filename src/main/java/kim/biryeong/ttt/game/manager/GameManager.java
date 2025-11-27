@@ -29,6 +29,7 @@ import net.minecraft.util.math.random.Xoroshiro128PlusPlusRandom;
 import net.minecraft.util.thread.NameableExecutor;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.World;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -55,11 +56,12 @@ public final class GameManager {
     final GameInstanceManager gameInstanceManager = new GameInstanceManager();
     final Map<Identifier, MapTemplate> templates = new Object2ObjectOpenHashMap<>();
     static MinecraftServer server;
-    final Logger LOGGER = LoggerFactory.getLogger("TTS_GameManager");
+    static final Logger LOGGER = LoggerFactory.getLogger("TTS_GameManager");
     static MinecraftAudiences ADVENTURE;
     public static GameDefaultSidebar DEFAULT_SIDEBAR;
     boolean debugMode = false;
     TTTMap currentMap;
+    TTTMap spawnMap;
 
     private GameManager() {
         executor.named("TTS Game Manager");
@@ -70,6 +72,26 @@ public final class GameManager {
         ADVENTURE = MinecraftServerAudiences.of(server);
         DEFAULT_SIDEBAR = new GameDefaultSidebar();
         getInstance().reloadMapData(getInstance().getAllMapIds());
+        try {
+            GameManager.getInstance().spawnMap = new TTTMap(Identifier.of("ttt:lobby"),MapTemplateSerializer.loadFromResource(server, Identifier.of("ttt:lobby")));
+        } catch (Exception e) {
+            LOGGER.error("cannot load lobby map", e);
+        }
+    }
+
+    public ServerWorld getSpawnWorld() {
+        if (this.spawnMap.getWorld() == null) {
+            this.spawnMap.generateWorld(server, false);
+        }
+
+        return this.spawnMap.getWorld();
+    }
+
+    public TTTMap getCurrentWorld() {
+        if (this.currentMap == null) {
+            return this.spawnMap;
+        }
+        return this.currentMap;
     }
 
     public static GameManager getInstance() {
@@ -127,13 +149,17 @@ public final class GameManager {
                         if (this.currentMap == null) {
                             this.currentMap = this.loadMap(Identifier.of("ttt:kitchen"));
                         }
-                        currentMap.generateWorld(server);
+                        currentMap.generateWorld(server, false);
 
                         ServerWorld world = currentMap.getWorld();
                         LOGGER.info("All background job are completed. starting game...");
                         gameInstanceManager.calculateAliveTraitors();
                         this.currentPhase.set(Phase.POST_GAME);
                         currentMap.spreadPlayers(availablePlayers);
+                        availablePlayers.forEach(p -> {
+                            InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) p;
+                            info.tts$getItemLoadout().giveToPlayer(p);
+                        });
                     })
             ).join();
         } catch (Exception e) {
@@ -178,7 +204,7 @@ public final class GameManager {
                     if (provider == null) {
                         return;
                     }
-                    player.getAttributeInstance(EntityAttributes.ARMOR).removeModifier(ShopUtil.ARMOR_ID);
+                    player.getAttributeInstance(EntityAttributes.ARMOR).removeModifier(ShopUtil.MODIFIER_ID);
                     provider.tts$clearFuse();
                 }), this.executor)
                 .thenRun(() -> server.executeSync(() -> {
@@ -192,9 +218,10 @@ public final class GameManager {
                         if (u.getPermissionLevel() < 2) {
                             u.getInventory().clear();
                         }
-                        u.getAttributeInstance(EntityAttributes.ARMOR).removeModifier(ShopUtil.ARMOR_ID);
+                        u.getAttributeInstance(EntityAttributes.ARMOR).removeModifier(ShopUtil.MODIFIER_ID);
                         // TODO : MOVE ALL PLAYER TO SPAWN
                     });
+                    this.spawnMap.spreadPlayers(server.getPlayerManager().getPlayerList());
                     this.currentMap.closeMap(server);
                     this.currentMap = null;
                 })).join();
@@ -330,7 +357,7 @@ public final class GameManager {
         victim.clearStatusEffects();
         victim.getAttributes().resetToBaseValue(EntityAttributes.ARMOR);
     }
-
+    @Contract("_ -> new")
     public static Text byMiniMessage(String message) {
         MiniMessage mm = MiniMessage.miniMessage();
         return ADVENTURE.asNative(mm.deserialize(message));

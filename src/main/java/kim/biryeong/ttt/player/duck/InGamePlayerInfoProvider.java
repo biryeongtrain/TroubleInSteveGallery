@@ -1,5 +1,6 @@
 package kim.biryeong.ttt.player.duck;
 
+import kim.biryeong.ttt.player.ItemLoadout;
 import kim.biryeong.ttt.player.role.Role;
 
 /**
@@ -21,6 +22,7 @@ public interface InGamePlayerInfoProvider {
     boolean tts$isAlive();
     boolean tts$denyToPlay();
     void tts$clearSidebarTime();
+    ItemLoadout tts$getItemLoadout();
 
     enum PointReason {
         KILL,

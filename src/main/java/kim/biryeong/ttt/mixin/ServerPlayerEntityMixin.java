@@ -3,6 +3,8 @@ package kim.biryeong.ttt.mixin;
 import eu.pb4.sidebars.api.SidebarInterface;
 import eu.pb4.sidebars.impl.SidebarHolder;
 import kim.biryeong.ttt.game.manager.GameManager;
+import kim.biryeong.ttt.player.ItemLoadout;
+import kim.biryeong.ttt.player.ItemLoadouts;
 import kim.biryeong.ttt.player.duck.InGameEventProvider;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.duck.SuicideBombInfo;
@@ -15,6 +17,9 @@ import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.storage.ReadView;
+import net.minecraft.storage.WriteView;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.explosion.ExplosionImpl;
 import org.spongepowered.asm.mixin.Mixin;
@@ -42,6 +47,8 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
     private SuicideBombInfo tts$bombInfo = new SuicideBombInfo();
     @Unique
     private boolean ttt$isInCombat = false;
+    @Unique
+    private ItemLoadout tts$loadout = ItemLoadouts.get(ItemLoadouts.DEFAULT_LOADOUT_KEY);
 
     @Override
     public Role tts$getRole() {
@@ -81,6 +88,11 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
     @Override
     public void tts$clearSidebarTime() {
         this.sidebarDisplayedTicks = 0;
+    }
+
+    @Override
+    public ItemLoadout tts$getItemLoadout() {
+        return this.tts$loadout;
     }
 
     @Override
@@ -157,4 +169,14 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
         this.ttt$isInCombat = false;
     }
 
+
+    @Inject(method = "writeCustomData", at = @At("HEAD"))
+    private void ttt$writeCustomData(WriteView view, CallbackInfo ci) {
+        view.put("tts$loadout", Identifier.CODEC, this.tts$loadout.loadoutId());
+    }
+
+    @Inject(method = "readCustomData", at = @At("HEAD"))
+    private void ttt$readCustomData(ReadView view, CallbackInfo ci) {
+        this.tts$loadout = ItemLoadouts.get(view.read("tts$loadout", Identifier.CODEC).orElse(ItemLoadouts.DEFAULT_LOADOUT_KEY));
+    }
 }

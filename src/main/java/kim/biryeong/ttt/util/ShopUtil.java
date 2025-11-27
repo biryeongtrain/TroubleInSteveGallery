@@ -9,31 +9,38 @@ import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.item.Item;
 import net.minecraft.item.Items;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 
 import static kim.biryeong.ttt.game.manager.GameManager.byMiniMessage;
 
 public class ShopUtil {
-    public static final Identifier ARMOR_ID = Identifier.of(TroubleInTerroristTownMod.MOD_ID, "ttt_armor");
-    public static final BiConsumer<Item, ServerPlayerEntity> DEFAULT = (item, player) -> {
-        player.getInventory().insertStack(item.getDefaultStack());
-    };
+    public static final Identifier MODIFIER_ID = Identifier.of(TroubleInTerroristTownMod.MOD_ID, "ttt_modifier");
+    public static final BiConsumer<Item, ServerPlayerEntity> DEFAULT = (item, player) -> player.getInventory().insertStack(item.getDefaultStack());
 
     public static final List<ShopElement> INNOCENT_ENTRIES = List.of(
-        new ShopElement.Builder()
-                .item(Items.DIAMOND_CHESTPLATE)
-                .descriptions(List.of(
-                        byMiniMessage("갑옷 포인트 20를 얻습니다."),
-                        byMiniMessage("약 40%의 피해 감소 효과가 있습니다.")
-                ))
-                .point(8)
-                .handler(((item, serverPlayerEntity) -> {
-                    serverPlayerEntity.getAttributeInstance(EntityAttributes.ARMOR).addPersistentModifier(new EntityAttributeModifier(ARMOR_ID, 20, EntityAttributeModifier.Operation.ADD_VALUE));
-                }))
-                .build()
+            new ShopElement.Builder()
+                    .item(Items.DIAMOND_CHESTPLATE)
+                    .name(byMiniMessage("<green>추가 갑옷!</green>"))
+                    .descriptions(List.of(
+                            byMiniMessage("갑옷 포인트 20를 얻습니다."),
+                            byMiniMessage("약 40%의 피해 감소 효과가 있습니다.")
+                    ))
+                    .point(8)
+                    .handler(((item, serverPlayerEntity) -> Objects.requireNonNull(serverPlayerEntity
+                                    .getAttributeInstance(EntityAttributes.ARMOR))
+                            .addPersistentModifier(new EntityAttributeModifier(
+                                    MODIFIER_ID,
+                                    20,
+                                    EntityAttributeModifier.Operation.ADD_VALUE)
+                            )
+                    ))
+                    .hideDefaultTooltip(true)
+                    .build()
     );
 
     public static final List<ShopElement> TRAITOR_ENTRIES = List.of(
@@ -75,14 +82,23 @@ public class ShopUtil {
             ,
             new ShopElement.Builder()
                     .item(Items.DIAMOND_CHESTPLATE)
+                    .name(byMiniMessage("<red>추가 갑옷!</red>"))
                     .descriptions(List.of(
                             byMiniMessage("갑옷 포인트 20을 얻습니다."),
-                            byMiniMessage("약 40%의 피해 감소 효과가 있습니다.")
+                            byMiniMessage("약 40%의 피해 감소 효과가 있습니다."),
+                            Text.empty(),
+                            Text.literal("<red> 주의 ! 중복으로 구매해도 효과가 중첩되지 않습니다! </red>")
                     ))
                     .point(2)
-                    .handler(((item, serverPlayerEntity) -> {
-                        serverPlayerEntity.getAttributeInstance(EntityAttributes.ARMOR).addPersistentModifier(new EntityAttributeModifier(ARMOR_ID, 20, EntityAttributeModifier.Operation.ADD_VALUE));
-                    }))
+                    .handler(((item, serverPlayerEntity) -> Objects.requireNonNull(serverPlayerEntity
+                                    .getAttributeInstance(EntityAttributes.ARMOR))
+                            .addPersistentModifier(new EntityAttributeModifier(
+                                    MODIFIER_ID,
+                                    20,
+                                    EntityAttributeModifier.Operation.ADD_VALUE
+                            ))
+                    ))
+                    .hideDefaultTooltip(true)
                     .build()
             ,
             new ShopElement.Builder()
@@ -93,6 +109,25 @@ public class ShopUtil {
                             byMiniMessage("위치 저장 후 3초 후 재 사용 가능합니다.")
                     ))
                     .point(11)
+                    .build()
+            ,
+            new ShopElement.Builder()
+                    .item(Items.COMPASS)
+                    .name(byMiniMessage("<red>플레이어 추적기</red>"))
+                    .descriptions(List.of(
+                            byMiniMessage("네비게이터를 활성화하여 25블록 이내의 플레이어를 탐지합니다."),
+                            byMiniMessage("<red> 주의 ! 중복으로 구매해도 효과가 중첩되지 않습니다! </red>")
+                    ))
+                    .point(5)
+                    .handler((item, player) -> Objects.requireNonNull(player
+                                    .getAttributeInstance(EntityAttributes.WAYPOINT_RECEIVE_RANGE))
+                            .addPersistentModifier(new EntityAttributeModifier(
+                                    MODIFIER_ID,
+                                    25,
+                                    EntityAttributeModifier.Operation.ADD_VALUE)
+                            )
+                    )
+                    .hideDefaultTooltip(true)
                     .build()
     );
 
@@ -109,14 +144,21 @@ public class ShopUtil {
             ,
             new ShopElement.Builder()
                     .item(Items.DIAMOND_CHESTPLATE)
+                    .name(byMiniMessage("<blue>추가 갑옷!</blue>"))
                     .descriptions(List.of(
                             byMiniMessage("갑옷 포인트 20를 얻습니다."),
                             byMiniMessage("약 30%의 피해 감소 효과가 있습니다.")
                     ))
                     .point(2)
-                    .handler(((item, serverPlayerEntity) -> {
-                        serverPlayerEntity.getAttributeInstance(EntityAttributes.ARMOR).addPersistentModifier(new EntityAttributeModifier(ARMOR_ID, 20, EntityAttributeModifier.Operation.ADD_VALUE));
-                    }))
+                    .handler(((item, serverPlayerEntity) -> Objects.requireNonNull(serverPlayerEntity
+                                    .getAttributeInstance(EntityAttributes.ARMOR))
+                            .addPersistentModifier(new EntityAttributeModifier(
+                                    MODIFIER_ID,
+                                    20,
+                                    EntityAttributeModifier.Operation.ADD_VALUE)
+                            )
+                    ))
+                    .hideDefaultTooltip(true)
                     .build()
             ,
             new ShopElement.Builder()
@@ -138,6 +180,26 @@ public class ShopUtil {
                             byMiniMessage("<red> - </red> 사거리가 2 감소합니다. ")
                     ))
                     .point(3)
+                    .build()
+            ,
+            new ShopElement.Builder()
+                    .item(Items.COMPASS)
+                    .name(byMiniMessage("<red>플레이어 추적기</red>"))
+                    .descriptions(List.of(
+                            byMiniMessage("네비게이터를 활성화하여 25블록 이내의 플레이어를 탐지합니다."),
+                            byMiniMessage("<red> 주의 ! 중복으로 구매해도 효과가 중첩되지 않습니다! </red>")
+                    ))
+                    .point(5)
+                    .handler((item, player) -> Objects.requireNonNull(player
+                                    .getAttributeInstance(EntityAttributes.WAYPOINT_RECEIVE_RANGE))
+                            .addPersistentModifier(new EntityAttributeModifier(
+                                            MODIFIER_ID,
+                                            25,
+                                            EntityAttributeModifier.Operation.ADD_VALUE
+                                    )
+                            )
+                    )
+                    .hideDefaultTooltip(true)
                     .build()
     );
 

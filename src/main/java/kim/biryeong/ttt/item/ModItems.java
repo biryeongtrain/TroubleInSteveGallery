@@ -1,6 +1,7 @@
 package kim.biryeong.ttt.item;
 
 import eu.pb4.polymer.core.api.item.PolymerItemGroupUtils;
+import eu.pb4.polymer.core.api.item.SimplePolymerItem;
 import kim.biryeong.ttt.TroubleInTerroristTownMod;
 import kim.biryeong.ttt.item.detective.DNAScanner;
 import kim.biryeong.ttt.item.traitor.AssassinBow;
@@ -78,6 +79,35 @@ public class ModItems {
             new Item.Settings().maxCount(1).component(DataComponentTypes.USE_COOLDOWN, new UseCooldownComponent(0.5f))
     );
 
+
+    public static final Item LONG_RANGED_SWORD = register("long_ranged_sword", settings ->  new SimplePolymerItem(settings, Items.IRON_AXE, false),
+            new Item.Settings().maxCount(1)
+                    .sword(ToolMaterial.NETHERITE, 0, -2.8f)
+                    .attributeModifiers(AttributeModifiersComponent.builder()
+                            .add(EntityAttributes.ATTACK_DAMAGE, new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID, 16, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
+                            .add(EntityAttributes.ENTITY_INTERACTION_RANGE, new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID, 4, EntityAttributeModifier.Operation.ADD_MULTIPLIED_BASE), AttributeModifierSlot.HAND)
+                            .build()
+                    )
+    );
+
+    public static final Item DAGGER = register("dagger", settings -> new SimplePolymerItem(settings, Items.IRON_SWORD, true),
+            new Item.Settings().maxCount(1)
+                    .sword(ToolMaterial.NETHERITE, 0, -1.6f)
+                    .attributeModifiers(AttributeModifiersComponent.builder()
+                            .add(EntityAttributes.ATTACK_DAMAGE, new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID, 14, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
+                            .add(EntityAttributes.ENTITY_INTERACTION_RANGE, new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID, -2f, EntityAttributeModifier.Operation.ADD_MULTIPLIED_BASE), AttributeModifierSlot.HAND)
+                            .build()
+                    )
+    );
+
+    public static final Item NORMAL_SWORD = register("sword", settings -> new SimplePolymerItem(settings, Items.IRON_SWORD, false),
+            new Item.Settings().maxCount(1)
+                    .sword(ToolMaterial.NETHERITE, 0, -2.6f)
+                    .attributeModifiers(AttributeModifiersComponent.builder()
+                            .add(EntityAttributes.ATTACK_DAMAGE, new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID, 16, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
+                            .build())
+    );
+
     public static Item register(String name, Function<Item.Settings, Item> itemFactory, Item.Settings settings) {
         RegistryKey<Item> itemKey = RegistryKey.of(RegistryKeys.ITEM, Identifier.of(TroubleInTerroristTownMod.MOD_ID, name));
         Item item = itemFactory.apply(settings.registryKey(itemKey));
@@ -85,6 +115,7 @@ public class ModItems {
 
         return item;
     }
+
 
     public static void initialize() {
         PolymerItemGroupUtils.registerPolymerItemGroup(ITEM_GROUP_KEY, ITEM_GROUP);
