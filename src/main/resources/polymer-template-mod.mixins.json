@@ -10,6 +10,7 @@
     "PersistentProjectileEntityAccessor",
     "PersistentProjectileEntityMixin",
     "ServerPlayerEntityMixin",
+    "ServerPlayNetworkHandlerMixin",
     "block.AbstractBlockStateMixin"
   ],
   "injectors": {

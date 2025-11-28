@@ -37,6 +37,7 @@ class GameInstanceManager {
     private int elapsedTicks = 0;
     private boolean isOverTime = false;
     private boolean gameEndRequested = false;
+    private boolean shouldTick = true;
 
 
     GameInstanceManager() {
@@ -57,6 +58,7 @@ class GameInstanceManager {
         this.warmupTimeTick = config.gameStartCountdownSeconds * 20;
         this.maxOverTimeTicks = config.maxOverTimeSeconds * 20;
         this.overtimePerKill = config.overTimePerKills * 20;
+        this.shouldTick = true;
     }
 
     void calculateAliveTraitors() {
@@ -95,6 +97,7 @@ class GameInstanceManager {
     }
 
     void tick() {
+        if (!shouldTick) return;
         if (GameManager.getInstance().getCurrentPhase() == GameManager.Phase.POST_GAME) {
             if (this.warmupTimeTick <= 0) {
                 GameManager.getInstance().setPhase(GameManager.Phase.MIDDLE_GAME);
@@ -183,7 +186,7 @@ class GameInstanceManager {
             FireworkRocketEntity firework = new FireworkRocketEntity(player.getWorld(), pos.x, pos.y, pos.z, fireworkStack);
             player.getWorld().spawnEntity(firework);
         });
-
+        this.shouldTick = false;
         Scheduler.INSTANCE.submit((s) -> {GameManager.getInstance().stopGame(result);}, 100);
 
     }

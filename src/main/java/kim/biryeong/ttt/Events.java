@@ -7,16 +7,21 @@ import kim.biryeong.ttt.ui.gui.ShopGUI;
 import kim.biryeong.ttt.util.NonThrowable;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
+import kim.biryeong.ttt.util.Scheduler;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.damage.DamageTypes;
+import net.minecraft.entity.passive.AnimalEntity;
+import net.minecraft.entity.passive.PassiveEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.world.GameMode;
+import xyz.nucleoid.fantasy.RuntimeWorld;
 import xyz.nucleoid.stimuli.Stimuli;
 import xyz.nucleoid.stimuli.event.EventResult;
+import xyz.nucleoid.stimuli.event.entity.EntitySpawnEvent;
 import xyz.nucleoid.stimuli.event.item.ItemThrowEvent;
 import xyz.nucleoid.stimuli.event.player.*;
 
@@ -49,7 +54,8 @@ public final class Events {
             handler.player.changeGameMode(mode);
             var playerInfo = (InGamePlayerInfoProvider) handler.getPlayer();
             playerInfo.tts$setRole(Role.SPECTATOR);
-            GameManager.getInstance().getCurrentWorld().spawnPlayer(handler.player);
+            Scheduler.INSTANCE.submit((s) -> {GameManager.getInstance().getCurrentWorld().spawnPlayer(handler.player);}, 1);
+
         });
 
 
@@ -61,6 +67,13 @@ public final class Events {
         // do not damage when not playing game
         Stimuli.global().listen(PlayerDamageEvent.EVENT, (player, source, amount) -> {
             if (!GameManager.getInstance().getCurrentPhase().isInProgress() || GameManager.getInstance().getCurrentPhase() == GameManager.Phase.POST_GAME) {
+                return EventResult.DENY;
+            }
+            return EventResult.PASS;
+        });
+
+        Stimuli.global().listen(EntitySpawnEvent.EVENT, (entity) -> {
+            if (entity instanceof PassiveEntity) {
                 return EventResult.DENY;
             }
             return EventResult.PASS;
@@ -101,7 +114,6 @@ public final class Events {
                 GameManager.getInstance().tick();
             }
         });
-
         // initialize lobby world.
         ServerLifecycleEvents.SERVER_STARTED.register(s -> {
             GameManager.getInstance().getSpawnWorld();
@@ -110,14 +122,14 @@ public final class Events {
         /**
          * Accepts full 0.75 + charged attacks. but have to check works properly.
          */
-        Stimuli.global().listen(PlayerAttackEntityEvent.EVENT, ((attacker, hand, attacked, hitResult) -> {
-            float time = attacker.getAttackCooldownProgress(0.5f);
-            if (time != 0.75f) {
-                return EventResult.DENY;
-            }
-
-            return EventResult.PASS;
-        } ));
+//        Stimuli.global().listen(PlayerAttackEntityEvent.EVENT, ((attacker, hand, attacked, hitResult) -> {
+//            float time = attacker.getAttackCooldownProgress(0.5f);
+//            if (time != 0.75f) {
+//                return EventResult.DENY;
+//            }
+//
+//            return EventResult.PASS;
+//        } ));
 
 
         // shop menu event

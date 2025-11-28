@@ -3,21 +3,26 @@ package kim.biryeong.ttt.command;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.mojang.brigadier.tree.LiteralCommandNode;
+import kim.biryeong.ttt.config.Config;
 import kim.biryeong.ttt.game.data.PlayerDataInstance;
 import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.util.explosion.ExplosionUtil;
 import net.minecraft.command.CommandSource;
+import net.minecraft.command.argument.EntityArgumentType;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.world.explosion.ExplosionImpl;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Locale;
 import java.util.stream.Stream;
 
@@ -66,6 +71,23 @@ public class CommandInitializer {
                     return Command.SINGLE_SUCCESS;
                 }).build();
 
+        LiteralCommandNode<ServerCommandSource> givePoints = CommandManager.literal("give_points")
+                .then(CommandManager.argument("player", EntityArgumentType.players())
+                        .then(CommandManager.argument("points", IntegerArgumentType.integer())
+                                .executes(ctx -> {
+                                    Collection<ServerPlayerEntity> players = EntityArgumentType.getPlayers(ctx, "player");
+                                    int points = IntegerArgumentType.getInteger(ctx, "points");
+                                    players.forEach(player -> {
+                                        InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
+                                        info.tts$addPoints(points, InGamePlayerInfoProvider.PointReason.ROLE_PLAYING);
+                                    });
+
+                                    return Command.SINGLE_SUCCESS;
+                                })))
+                .build();
+
+         adminRoot.addChild(givePoints);
+
         LiteralCommandNode<ServerCommandSource> userRoot = CommandManager.literal("tts")
                 .build();
 
@@ -76,6 +98,14 @@ public class CommandInitializer {
                             ServerPlayerEntity player = ctx.getSource().getPlayerOrThrow();
                             return Command.SINGLE_SUCCESS;
                         }))
+                .build();
+
+
+        LiteralCommandNode<ServerCommandSource> reload = CommandManager.literal("reload")
+                .executes(ctx -> {
+                    Config.reload();
+                    return 1;
+                })
                 .build();
 
 
@@ -107,9 +137,12 @@ public class CommandInitializer {
                         })
                 ).build();
 
+
+
         adminRoot.addChild(startGame);
         adminRoot.addChild(stopGame);
         adminRoot.addChild(setRole);
+        adminRoot.addChild(reload);
 
         userRoot.addChild(spectatorMode);
 

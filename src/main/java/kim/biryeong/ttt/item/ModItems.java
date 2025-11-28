@@ -105,6 +105,7 @@ public class ModItems {
                     .sword(ToolMaterial.NETHERITE, 0, -2.6f)
                     .attributeModifiers(AttributeModifiersComponent.builder()
                             .add(EntityAttributes.ATTACK_DAMAGE, new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID, 16, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
+                            .add(EntityAttributes.ATTACK_SPEED, new EntityAttributeModifier(Item.BASE_ATTACK_SPEED_MODIFIER_ID, -2.4f, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
                             .build())
     );
 

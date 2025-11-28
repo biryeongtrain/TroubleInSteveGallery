@@ -22,6 +22,8 @@ import net.minecraft.storage.WriteView;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.explosion.ExplosionImpl;
+import org.jetbrains.annotations.NotNull;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -44,7 +46,7 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
     @Unique
     private boolean tts$denyToPlay = false;
     @Unique
-    private SuicideBombInfo tts$bombInfo = new SuicideBombInfo();
+    private  SuicideBombInfo tts$bombInfo = new SuicideBombInfo();
     @Unique
     private boolean ttt$isInCombat = false;
     @Unique
@@ -107,6 +109,9 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
 
     @Override
     public void tts$clearFuse() {
+        if (this.tts$bombInfo == null) {
+            this.tts$bombInfo = new SuicideBombInfo();
+        }
         this.tts$bombInfo.clearFuse();
     }
 
@@ -133,7 +138,9 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
         if (!GameManager.getInstance().isAlive((ServerPlayerEntity) (Object) this)) {
             return;
         }
-
+        if (this.tts$bombInfo == null) {
+            this.tts$bombInfo = new SuicideBombInfo();
+        }
         if (this.tts$bombInfo.tick((ServerPlayerEntity) (Object) this)) {
             this.tts$explode();
         }

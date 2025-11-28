@@ -11,6 +11,7 @@ import kim.biryeong.ttt.player.duck.InGameEventProvider;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.ui.sidebar.GameDefaultSidebar;
+import kim.biryeong.ttt.util.Scheduler;
 import kim.biryeong.ttt.util.ShopUtil;
 import kim.biryeong.ttt.world.TTTMap;
 import net.kyori.adventure.platform.modcommon.MinecraftAudiences;
@@ -18,6 +19,7 @@ import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -73,7 +75,7 @@ public final class GameManager {
         DEFAULT_SIDEBAR = new GameDefaultSidebar();
         getInstance().reloadMapData(getInstance().getAllMapIds());
         try {
-            GameManager.getInstance().spawnMap = new TTTMap(Identifier.of("ttt:lobby"),MapTemplateSerializer.loadFromResource(server, Identifier.of("ttt:lobby")));
+            GameManager.getInstance().spawnMap = new TTTMap(Identifier.of("ttt:lobby"), MapTemplateSerializer.loadFromResource(server, Identifier.of("ttt:lobby")));
         } catch (Exception e) {
             LOGGER.error("cannot load lobby map", e);
         }
@@ -81,14 +83,14 @@ public final class GameManager {
 
     public ServerWorld getSpawnWorld() {
         if (this.spawnMap.getWorld() == null) {
-            this.spawnMap.generateWorld(server, false);
+            this.spawnMap.generateWorld(server, true);
         }
 
         return this.spawnMap.getWorld();
     }
 
     public TTTMap getCurrentWorld() {
-        if (this.currentMap == null) {
+        if (this.currentMap == null || !this.getCurrentPhase().isInProgress()) {
             return this.spawnMap;
         }
         return this.currentMap;
@@ -118,6 +120,11 @@ public final class GameManager {
             throw new IllegalStateException("Game is already started.");
         }
         try {
+            if (this.currentMap == null) {
+                this.currentMap = this.loadMap(Identifier.of("ttt:kitchen"));
+                currentMap.generateWorld(server, true);
+            }
+
             List<ServerPlayerEntity> players = server.getPlayerManager().getPlayerList();
             List<ServerPlayerEntity> availablePlayers = players
                     .stream()
@@ -143,25 +150,24 @@ public final class GameManager {
 
             this.gameInstanceManager.initialize(availablePlayers.stream().map(PlayerEntity::getUuid).toList());
 
-            CompletableFuture.runAsync(
-                    () -> this.startGame(availablePlayers),
-                    this.executor).thenRun(() -> server.executeSync(() -> {
-                        if (this.currentMap == null) {
-                            this.currentMap = this.loadMap(Identifier.of("ttt:kitchen"));
-                        }
-                        currentMap.generateWorld(server, false);
 
-                        ServerWorld world = currentMap.getWorld();
-                        LOGGER.info("All background job are completed. starting game...");
-                        gameInstanceManager.calculateAliveTraitors();
-                        this.currentPhase.set(Phase.POST_GAME);
-                        currentMap.spreadPlayers(availablePlayers);
-                        availablePlayers.forEach(p -> {
-                            InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) p;
-                            info.tts$getItemLoadout().giveToPlayer(p);
-                        });
-                    })
-            ).join();
+            this.startGame(availablePlayers);
+
+
+
+            ServerWorld world = currentMap.getWorld();
+            LOGGER.info("All background job are completed. starting game...");
+            gameInstanceManager.calculateAliveTraitors();
+            this.currentPhase.set(Phase.POST_GAME);
+
+                currentMap.spreadPlayers(availablePlayers);
+
+            availablePlayers.forEach(p -> {
+                InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) p;
+                info.tts$getItemLoadout().giveToPlayer(p);
+            });
+
+
         } catch (Exception e) {
             LOGGER.error("error occurred while starting game", e);
         }
@@ -184,47 +190,46 @@ public final class GameManager {
         this.currentPhase.set(Phase.END_GAME);
         // TODO STOP LOGIC
         sendMessage("<red>게임 결과를 저장중입니다. 나가지 마세요...");
-        CompletableFuture.runAsync(() -> this.gameInstanceManager.getParticipants().forEach(u -> {
-                    PlayerDataInstance data = this.gameDataManager.getData(u);
-                    if (data == null) {
-                        return;
-                    }
-                    ServerPlayerEntity player = getPlayer(u);
-                    if (player == null) {
-                        return;
-                    }
-                    InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
-                    var result = innocentResult.getByRole(info.tts$getRole());
-                    var playerResult = PlayerDataInstance.PlayerGameResult.create(info.tts$getRole(), result, result == PlayerDataInstance.Result.WIN ? 10 : 5);
-                    data.addResult(playerResult);
-                    info.tts$addPoints(playerResult.gainPoints(), playerResult.win() == PlayerDataInstance.Result.WIN ? InGamePlayerInfoProvider.PointReason.WIN : InGamePlayerInfoProvider.PointReason.LOSE);
-                    this.gameDataManager.saveAll();
-                    this.gameDataManager.saveRoundData();
-                    InGameEventProvider provider = (InGameEventProvider) GameManager.getInstance().getPlayer(u);
-                    if (provider == null) {
-                        return;
-                    }
-                    player.getAttributeInstance(EntityAttributes.ARMOR).removeModifier(ShopUtil.MODIFIER_ID);
-                    provider.tts$clearFuse();
-                }), this.executor)
-                .thenRun(() -> server.executeSync(() -> {
-                    this.gameInstanceManager.clear();
-                    sendMessage("<green>게임 결과가 저장되었습니다.");
-                    this.currentPhase.set(Phase.NOT_STARTED);
-                    server.getPlayerManager().getPlayerList().forEach(u -> {
-                        var pos = server.getWorld(World.OVERWORLD).getSpawnPos();
-                        u.requestTeleportAndDismount(pos.getX(), pos.getY(), pos.getZ());
-                        u.changeGameMode(GameMode.ADVENTURE);
-                        if (u.getPermissionLevel() < 2) {
-                            u.getInventory().clear();
-                        }
-                        u.getAttributeInstance(EntityAttributes.ARMOR).removeModifier(ShopUtil.MODIFIER_ID);
-                        // TODO : MOVE ALL PLAYER TO SPAWN
-                    });
-                    this.spawnMap.spreadPlayers(server.getPlayerManager().getPlayerList());
-                    this.currentMap.closeMap(server);
-                    this.currentMap = null;
-                })).join();
+        this.gameInstanceManager.getParticipants().forEach(u -> {
+            PlayerDataInstance data = this.gameDataManager.getData(u);
+            if (data == null) {
+                return;
+            }
+            ServerPlayerEntity player = getPlayer(u);
+            if (player == null) {
+                return;
+            }
+            InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
+            var result = innocentResult.getByRole(info.tts$getRole());
+            var playerResult = PlayerDataInstance.PlayerGameResult.create(info.tts$getRole(), result, result == PlayerDataInstance.Result.WIN ? 10 : 5);
+            data.addResult(playerResult);
+            info.tts$addPoints(playerResult.gainPoints(), playerResult.win() == PlayerDataInstance.Result.WIN ? InGamePlayerInfoProvider.PointReason.WIN : InGamePlayerInfoProvider.PointReason.LOSE);
+            this.gameDataManager.saveAll();
+            this.gameDataManager.saveRoundData();
+            InGameEventProvider provider = (InGameEventProvider) GameManager.getInstance().getPlayer(u);
+            if (provider == null) {
+                return;
+            }
+            player.getAttributeInstance(EntityAttributes.ARMOR).removeModifier(ShopUtil.MODIFIER_ID);
+            provider.tts$clearFuse();
+        });
+
+        this.gameInstanceManager.clear();
+        sendMessage("<green>게임 결과가 저장되었습니다.");
+        this.currentPhase.set(Phase.NOT_STARTED);
+        server.getPlayerManager().getPlayerList().forEach(u -> {
+            this.spawnMap.spawnPlayer(u);
+            u.changeGameMode(GameMode.ADVENTURE);
+            if (u.getPermissionLevel() < 2) {
+                u.getInventory().clear();
+            }
+            u.getAttributeInstance(EntityAttributes.ARMOR).removeModifier(ShopUtil.MODIFIER_ID);
+            // TODO : MOVE ALL PLAYER TO SPAWN
+        });
+        this.spawnMap.spreadPlayers(server.getPlayerManager().getPlayerList());
+//        this.currentMap.closeMap(server);
+//        this.currentMap = null;
+
     }
 
     private void startGame(List<ServerPlayerEntity> availablePlayers) {
@@ -266,7 +271,8 @@ public final class GameManager {
         return this.rand.get();
     }
 
-    private void selectRoles(Role role, int amount, List<UUID> allParticipants, List<UUID> list, StringBuilder builder, Xoroshiro128PlusPlusRandom rnd) {
+    private void selectRoles(Role role, int amount, List<UUID> allParticipants, List<UUID> list, StringBuilder
+            builder, Xoroshiro128PlusPlusRandom rnd) {
         if (amount == 0) return;
 
         for (int i = 0; i < amount; i++) {
@@ -348,7 +354,8 @@ public final class GameManager {
         return server.getPlayerManager().getPlayer(uuid);
     }
 
-    public void onKilled(@Nullable ServerPlayerEntity attacker, ServerPlayerEntity victim, DamageSource damageSource) {
+    public void onKilled(@Nullable ServerPlayerEntity attacker, ServerPlayerEntity victim, DamageSource
+            damageSource) {
         this.gameDataManager.recordKillData(attacker, victim, damageSource);
         this.gameInstanceManager.onPlayerKilled(attacker, victim, damageSource);
 
@@ -357,6 +364,7 @@ public final class GameManager {
         victim.clearStatusEffects();
         victim.getAttributes().resetToBaseValue(EntityAttributes.ARMOR);
     }
+
     @Contract("_ -> new")
     public static Text byMiniMessage(String message) {
         MiniMessage mm = MiniMessage.miniMessage();
@@ -395,7 +403,12 @@ public final class GameManager {
             throw new IllegalArgumentException("map template not found : " + id);
         }
 
-        MapTemplate template = this.templates.get(id);
+        MapTemplate template = null;
+        try {
+            template = MapTemplateSerializer.loadFromResource(server, id);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         return new TTTMap(id, template);
     }
 
