@@ -11,7 +11,6 @@ import kim.biryeong.ttt.player.duck.InGameEventProvider;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.ui.sidebar.GameDefaultSidebar;
-import kim.biryeong.ttt.util.Scheduler;
 import kim.biryeong.ttt.util.ShopUtil;
 import kim.biryeong.ttt.world.TTTMap;
 import net.kyori.adventure.platform.modcommon.MinecraftAudiences;
@@ -19,7 +18,6 @@ import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -30,7 +28,6 @@ import net.minecraft.util.math.random.RandomSeed;
 import net.minecraft.util.math.random.Xoroshiro128PlusPlusRandom;
 import net.minecraft.util.thread.NameableExecutor;
 import net.minecraft.world.GameMode;
-import net.minecraft.world.World;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -41,7 +38,6 @@ import xyz.nucleoid.map_templates.MapTemplateSerializer;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -150,14 +146,14 @@ public final class GameManager {
 
             this.gameInstanceManager.initialize(availablePlayers.stream().map(PlayerEntity::getUuid).toList());
 
+            ArrayList<ServerPlayerEntity> traitors = new ArrayList<>();
+            ArrayList<ServerPlayerEntity> detectives = new ArrayList<>();
 
-            this.startGame(availablePlayers);
-
-
+            this.startGame(availablePlayers, traitors, detectives);
 
             ServerWorld world = currentMap.getWorld();
             LOGGER.info("All background job are completed. starting game...");
-            gameInstanceManager.calculateAliveTraitors();
+            gameInstanceManager.setupRole(traitors, detectives);
             this.currentPhase.set(Phase.POST_GAME);
 
                 currentMap.spreadPlayers(availablePlayers);
@@ -189,6 +185,7 @@ public final class GameManager {
     public void stopGame(PlayerDataInstance.Result innocentResult) {
         this.currentPhase.set(Phase.END_GAME);
         // TODO STOP LOGIC
+        this.gameInstanceManager.removeTeamDataFromAllPlayers();
         sendMessage("<red>게임 결과를 저장중입니다. 나가지 마세요...");
         this.gameInstanceManager.getParticipants().forEach(u -> {
             PlayerDataInstance data = this.gameDataManager.getData(u);
@@ -232,7 +229,7 @@ public final class GameManager {
 
     }
 
-    private void startGame(List<ServerPlayerEntity> availablePlayers) {
+    private void startGame(List<ServerPlayerEntity> availablePlayers, List<ServerPlayerEntity> traitors, List<ServerPlayerEntity> detectives) {
         if (server == null) {
             throw new IllegalStateException("Server is not set yet. this is must be bug.");
         }
@@ -245,9 +242,7 @@ public final class GameManager {
         int numOfTraitors = Math.max(availablePlayers.size() / 3, 1);
         LOGGER.info("required detective : {}, required traitor = {}", numOfDetectives, numOfTraitors);
 
-        ArrayList<UUID> detectives = new ArrayList<>();
-        ArrayList<UUID> traitors = new ArrayList<>();
-        ArrayList<UUID> users = Lists.newArrayList(availablePlayers.stream().map(PlayerEntity::getUuid).toList());
+        ArrayList<ServerPlayerEntity> users = Lists.newArrayList(availablePlayers);
 
         StringBuilder detectiveNames = new StringBuilder();
         StringBuilder traitorNames = new StringBuilder();
@@ -271,24 +266,18 @@ public final class GameManager {
         return this.rand.get();
     }
 
-    private void selectRoles(Role role, int amount, List<UUID> allParticipants, List<UUID> list, StringBuilder
+    private void selectRoles(Role role, int amount, List<ServerPlayerEntity> allParticipants, List<ServerPlayerEntity> output, StringBuilder
             builder, Xoroshiro128PlusPlusRandom rnd) {
         if (amount == 0) return;
 
         for (int i = 0; i < amount; i++) {
             int random = rnd.nextInt(allParticipants.size());
-            UUID u = allParticipants.remove(random);
-            var p = server.getPlayerManager().getPlayer(u);
+            ServerPlayerEntity p = allParticipants.remove(random);
             var info = (InGamePlayerInfoProvider) p;
             info.tts$setRole(role);
-            info.tts$addPoints(role == Role.DETECTIVE ? 5 : 2, InGamePlayerInfoProvider.PointReason.ROLE_PLAYING);
             builder.append(p.getGameProfile().getName()).append(", ");
-            list.add(u);
+            output.add(p);
         }
-    }
-
-    private void spreadPlayers() {
-        // TODO Implementation
     }
 
     public void onPlayerJoined(ServerPlayerEntity player) {
@@ -410,6 +399,10 @@ public final class GameManager {
             throw new RuntimeException(e);
         }
         return new TTTMap(id, template);
+    }
+
+    public GameInstanceManager getInstanceManager() {
+        return gameInstanceManager;
     }
 
     public enum Phase {

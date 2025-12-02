@@ -1,5 +1,6 @@
 package kim.biryeong.ttt.game.manager;
 
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import kim.biryeong.ttt.config.Config;
 import kim.biryeong.ttt.game.data.PlayerDataInstance;
@@ -13,8 +14,12 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.projectile.FireworkRocketEntity;
 import net.minecraft.item.Items;
+import net.minecraft.network.packet.s2c.play.TeamS2CPacket;
+import net.minecraft.scoreboard.Team;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.Formatting;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +28,8 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @SuppressWarnings("unused")
-class GameInstanceManager {
+public class GameInstanceManager {
+    public static final String TEAM_KEY = "ttt:fake_team";
     private final Logger LOGGER = LoggerFactory.getLogger(GameInstanceManager.class);
     private final Set<UUID> participants = Collections.synchronizedSet(new HashSet<>());
     private final Set<UUID> corpseEntities = Collections.synchronizedSet(new HashSet<>());
@@ -38,7 +44,9 @@ class GameInstanceManager {
     private boolean isOverTime = false;
     private boolean gameEndRequested = false;
     private boolean shouldTick = true;
-
+    private List<UUID> traitors;
+    private List<UUID> detectives;
+    private Team team;
 
     GameInstanceManager() {
         if (initialized) {
@@ -59,17 +67,15 @@ class GameInstanceManager {
         this.maxOverTimeTicks = config.maxOverTimeSeconds * 20;
         this.overtimePerKill = config.overTimePerKills * 20;
         this.shouldTick = true;
+        this.traitors = null;
+        this.detectives = null;
+        this.team = null;
     }
 
-    void calculateAliveTraitors() {
-        this.aliveTraitors = aliveParticipants.stream().filter(u -> {
-            ServerPlayerEntity player = GameManager.server.getPlayerManager().getPlayer(u);
-            if (player == null) {
-                return false;
-            }
-            InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
-            return info.tts$getRole() == Role.TRAITOR;
-        }).toList().size();
+    void setupRole(List<ServerPlayerEntity> traitors, List<ServerPlayerEntity> detectives) {
+        this.aliveTraitors = traitors.size();
+        this.traitors = traitors.stream().map(Entity::getUuid).toList();
+        this.detectives = detectives.stream().map(Entity::getUuid).toList();
     }
 
     public int getTimeLeft() {
@@ -88,10 +94,6 @@ class GameInstanceManager {
         participants.addAll(uuids);
     }
 
-    public void onGameStopped() {
-
-    }
-
     public Set<UUID> getParticipants() {
         return Collections.unmodifiableSet(participants);
     }
@@ -100,6 +102,28 @@ class GameInstanceManager {
         if (!shouldTick) return;
         if (GameManager.getInstance().getCurrentPhase() == GameManager.Phase.POST_GAME) {
             if (this.warmupTimeTick <= 0) {
+                this.aliveParticipants.forEach(u -> {
+                    ServerPlayerEntity player = GameManager.server.getPlayerManager().getPlayer(u);
+                    if (player == null) {
+                        return;
+                    }
+                    InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
+                    int points = switch (info.tts$getRole()) {
+                        case DETECTIVE, TRAITOR -> 5;
+                        default -> 2;
+                    };
+                    info.tts$addPoints(points, InGamePlayerInfoProvider.PointReason.ROLE_PLAYING);
+                });
+                this.traitors.forEach(u -> {
+                    ServerPlayerEntity player = GameManager.server.getPlayerManager().getPlayer(u);
+                    if (player == null) {
+                        return;
+                    }
+                    InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
+                    if (info.tts$getRole() == Role.TRAITOR) {
+                        player.networkHandler.sendPacket(TeamS2CPacket.updateTeam(getOrCreateFakeTeam(), true));
+                    }
+                });
                 GameManager.getInstance().setPhase(GameManager.Phase.MIDDLE_GAME);
             }
             this.warmupTimeTick--;
@@ -239,6 +263,31 @@ class GameInstanceManager {
         aliveParticipants.remove(playerUuid);
     }
 
+    public void removeTeamDataFromAllPlayers() {
+        GameManager.server.getPlayerManager().getPlayerList().forEach(player -> player.networkHandler.sendPacket(TeamS2CPacket.updateRemovedTeam(getOrCreateFakeTeam())));
+    }
+
+    Team getOrCreateFakeTeam() {
+        if (this.team != null) {
+            return this.team;
+        }
+        this.team = new Team(GameManager.server.getScoreboard(), TEAM_KEY);
+        this.team.setColor(Formatting.RED);
+        this.traitors.forEach(uuid -> {
+            if (!aliveParticipants.contains(uuid)) {
+                return;
+            }
+            ServerPlayerEntity p = GameManager.getInstance().getPlayer(uuid);
+            if (p == null) {
+                return;
+            }
+
+            team.getPlayerList().add(p.getNameForScoreboard());
+        });
+
+        return this.team;
+    }
+
     public void onPlayerKilled(@Nullable ServerPlayerEntity attacker, ServerPlayerEntity victim, DamageSource source) {
         UUID victimUuid = victim.getUuid();
         InGamePlayerInfoProvider victimInfo = (InGamePlayerInfoProvider) victim;
@@ -258,6 +307,31 @@ class GameInstanceManager {
             aliveTraitors--;
         }
         aliveParticipants.remove(victimUuid);
+        if (victimInfo.tts$getRole() != Role.TRAITOR) {
+            victim.networkHandler.sendPacket(TeamS2CPacket.updateTeam(getOrCreateFakeTeam(), true));
+        }
+    }
+
+    @Contract(pure = true)
+    public IntList aliveTraitorIds() {
+        IntList list = new IntArrayList();
+        if (this.traitors == null) {
+            return list;
+        }
+        for (UUID traitor : this.traitors) {
+            if (!aliveParticipants.contains(traitor)) {
+                continue;
+            }
+
+            ServerPlayerEntity player = GameManager.getInstance().getPlayer(traitor);
+            if (player == null) {
+                continue;
+            }
+
+            list.add(player.getId());
+        }
+
+        return list;
     }
 
     private static boolean initialized = false;
