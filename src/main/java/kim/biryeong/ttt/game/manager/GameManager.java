@@ -226,6 +226,7 @@ public final class GameManager {
         player.getInventory().clear();
         player.giveItemStack(ModItems.NORMAL_SWORD.getDefaultStack());
         player.giveItemStack(Items.BOW.getDefaultStack());
+        player.giveItemStack(Items.LEAD.getDefaultStack().copyWithCount(5));
     }
 
     private void handleStartFailure(Exception exception) {
