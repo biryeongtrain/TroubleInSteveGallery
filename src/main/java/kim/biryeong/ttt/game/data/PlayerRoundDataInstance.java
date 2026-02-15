@@ -8,6 +8,7 @@ import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.network.ServerPlayerEntity;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +27,7 @@ public class PlayerRoundDataInstance {
     private PlayerRoundDataInstance(Date date, Role role, List<RoundKillData> roundKillData) {
         this.date = date;
         this.role = role;
-        this.roundKillData = roundKillData;
+        this.roundKillData = new ArrayList<>(roundKillData);
     }
 
     public Date date() {
@@ -59,15 +60,18 @@ public class PlayerRoundDataInstance {
         return new PlayerRoundDataInstance(date, role, new ArrayList<>());
     }
 
-    public void recordKillData(int elapsedSeconds, ServerPlayerEntity player, DamageSource source) {
+    public void recordKillData(int elapsedSeconds, @Nullable ServerPlayerEntity player, DamageSource source) {
         if (player == null) {
             this.roundKillData.add(new RoundKillData(elapsedSeconds, "Unknown", Role.SPECTATOR, true));
             return;
         }
+
         InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
-        String victimName = player.getGameProfile().getName();
-        Role victimRole = info.tts$getRole();
-        this.roundKillData.add(new RoundKillData(elapsedSeconds, victimName, victimRole, source.getAttacker().equals(player)));
+        String counterpartName = player.getGameProfile().getName();
+        Role counterpartRole = info.tts$getRole();
+        boolean slainByVictim = source.getAttacker() != null && source.getAttacker().getUuid().equals(player.getUuid());
+
+        this.roundKillData.add(new RoundKillData(elapsedSeconds, counterpartName, counterpartRole, slainByVictim));
     }
 
     public record RoundKillData(int elapsedSeconds, String victimName, Role victimRole, boolean slainByVictim) {

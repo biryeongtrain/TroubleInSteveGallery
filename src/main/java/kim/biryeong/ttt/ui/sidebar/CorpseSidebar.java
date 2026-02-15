@@ -18,7 +18,7 @@ public class CorpseSidebar extends Sidebar {
     private final Role role;
     private final Role userRole;
     private final ServerPlayerEntity user;
-    private DamageSource source;
+    private final DamageSource source;
 
     public CorpseSidebar(CorpseEntity corpse, ServerPlayerEntity user) {
         super(Priority.HIGH);
@@ -31,39 +31,45 @@ public class CorpseSidebar extends Sidebar {
     }
 
     private void initialize() {
-        this.setTitle(GameManager.byMiniMessage("%s 님의 시체 정보".formatted(userName)));
+        this.setTitle(GameManager.byMiniMessage("%s님의 시체 정보".formatted(this.userName)));
         this.addLines(GameManager.byMiniMessage(
-                        "직업 : <#color>%s</#color>"
-                                .formatted(this.role.krRoleName)
-                                .replace("color", String.valueOf(this.role.hexColor))
-                )
-        );
+                "직업: <#color>%s</#color>"
+                        .formatted(this.role.krRoleName)
+                        .replace("color", this.role.hexColor)
+        ));
 
-        String killResult = this.source == null ?
-                "알 수 없음" :
-                switch (this.source.getType().msgId()) {
-                    case ("arrow") -> "원거리 피해";
-                    case "player" -> "근접 피해";
-                    default -> "환경 변수";
-                };
-        this.addLines(GameManager.byMiniMessage("사망 원인 : %s".formatted(killResult)));
+        this.addLines(GameManager.byMiniMessage("사망 원인: %s".formatted(resolveKillResult(this.source))));
 
-        if (this.role == Role.DETECTIVE) {
-            boolean hasScanner = this.user.getInventory().containsAny(Set.of(ModItems.DNA_SCANNER));
-            if (hasScanner) {
-                boolean killerRecorded = this.source != null && this.source.getAttacker() != null && this.source.getAttacker() instanceof ServerPlayerEntity;
-
-                Text text = killerRecorded ?
-                        GameManager.byMiniMessage("살인자 정보가 없습니다.") :
-                        GameManager.byMiniMessage("살인자 : <red>%s<red>".formatted(GameManager.getInstance().getPlayer(this.source.getAttacker().getUuid()).getGameProfile().getName()))
-                ;
-
-                this.addLines(text);
-            }
+        boolean hasScanner = this.user.getInventory().containsAny(Set.of(ModItems.DNA_SCANNER));
+        if (canRevealKillerInfo(this.userRole, hasScanner)) {
+            this.addLines(this.buildKillerInfoLine());
         }
 
         this.show();
         this.addPlayer(this.user);
+    }
+
+    static boolean canRevealKillerInfo(Role viewerRole, boolean hasScanner) {
+        return viewerRole == Role.DETECTIVE && hasScanner;
+    }
+
+    private Text buildKillerInfoLine() {
+        if (this.source == null || !(this.source.getAttacker() instanceof ServerPlayerEntity attacker)) {
+            return GameManager.byMiniMessage("살해자 정보를 확인할 수 없습니다.");
+        }
+        return GameManager.byMiniMessage("살해자: <red>%s</red>".formatted(attacker.getGameProfile().getName()));
+    }
+
+    private static String resolveKillResult(DamageSource source) {
+        if (source == null) {
+            return "알 수 없음";
+        }
+
+        return switch (source.getType().msgId()) {
+            case "arrow" -> "원거리";
+            case "player" -> "근접";
+            default -> "환경/기타";
+        };
     }
 
     {

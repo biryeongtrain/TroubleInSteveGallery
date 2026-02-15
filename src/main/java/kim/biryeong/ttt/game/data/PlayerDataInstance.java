@@ -74,11 +74,11 @@ public class PlayerDataInstance {
         }
 
         public Result getByRole(Role role) {
-            if (this == CANCELED) {
+            if (this == CANCELED || role == Role.SPECTATOR) {
                 return this;
             }
 
-            if (role == Role.INNOCENT) {
+            if (role == Role.INNOCENT || role == Role.DETECTIVE) {
                 return this;
             }
 

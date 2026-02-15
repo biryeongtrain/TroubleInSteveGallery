@@ -2,6 +2,7 @@ package kim.biryeong.ttt.mixin;
 
 import eu.pb4.sidebars.api.SidebarInterface;
 import eu.pb4.sidebars.impl.SidebarHolder;
+import kim.biryeong.ttt.entity.CorpseEntity;
 import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.player.ItemLoadout;
 import kim.biryeong.ttt.player.ItemLoadouts;
@@ -11,6 +12,7 @@ import kim.biryeong.ttt.player.duck.SuicideBombInfo;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.ui.sidebar.CorpseSidebar;
 import kim.biryeong.ttt.util.explosion.ExplosionUtil;
+import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.network.packet.s2c.play.ExplosionS2CPacket;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
@@ -65,6 +67,11 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
     @Override
     public void tts$setRole(Role role) {
         this.tts$role = role;
+    }
+
+    @Override
+    public void tts$setDenyToPlay(boolean denyToPlay) {
+        this.tts$denyToPlay = denyToPlay;
     }
 
     @Override
@@ -151,18 +158,57 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
         ServerPlayerEntity player = (ServerPlayerEntity) (Object) this;
         Vec3d pos = player.getSyncedPos().add(0, 1.5, 0);
         ServerWorld world = player.getWorld().toServerWorld();
+        DamageSource source = world.getDamageSources().explosion(player, player);
 
         ExplosionImpl explosion = ExplosionUtil.createExplosion(
-                null,
+                player,
                 pos,
                 world,
                 3f
         );
         explosion.explode();
+        this.tts$applyExplosionDamageFallback(player, world, pos, source, explosion.getPower());
+
         for (ServerPlayerEntity serverPlayerEntity : world.getPlayers()) {
             if (!(serverPlayerEntity.squaredDistanceTo(pos) < 4096.0)) continue;
-            Optional<Vec3d> optional = Optional.ofNullable(explosion.getKnockbackByPlayer().get(serverPlayerEntity));
             serverPlayerEntity.networkHandler.sendPacket(new ExplosionS2CPacket(pos, Optional.ofNullable(null), ParticleTypes.EXPLOSION_EMITTER, SoundEvents.ENTITY_GENERIC_EXPLODE));
+        }
+    }
+
+    @Unique
+    private void tts$applyExplosionDamageFallback(
+            ServerPlayerEntity bomber,
+            ServerWorld world,
+            Vec3d pos,
+            DamageSource source,
+            float power
+    ) {
+        GameManager manager = GameManager.getInstance();
+        if (!manager.getCurrentPhase().canShowRole()) {
+            return;
+        }
+
+        double maxDistance = power * 2.0f;
+        double maxDistanceSquared = maxDistance * maxDistance;
+        for (ServerPlayerEntity target : world.getPlayers()) {
+            if (target.squaredDistanceTo(pos) > maxDistanceSquared) {
+                continue;
+            }
+            if (!manager.isAlive(target)) {
+                continue;
+            }
+            if (ExplosionImpl.calculateReceivedDamage(pos, target) <= 0.0f) {
+                continue;
+            }
+
+            // Some environments cancel explosion damage callbacks; force round-state kill flow as fallback.
+            if (target.damage(world, source, 1557.0f)) {
+                continue;
+            }
+
+            ServerPlayerEntity attacker = target.getUuid().equals(bomber.getUuid()) ? null : bomber;
+            manager.onKilled(attacker, target, source);
+            world.spawnEntity(CorpseEntity.createCorpse(world, target, source));
         }
     }
 

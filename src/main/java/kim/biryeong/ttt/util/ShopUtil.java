@@ -90,13 +90,19 @@ public class ShopUtil {
                             Text.literal("<red> 주의 ! 중복으로 구매해도 효과가 중첩되지 않습니다! </red>")
                     ))
                     .point(2)
-                    .handler(((item, serverPlayerEntity) -> Objects.requireNonNull(serverPlayerEntity
-                                    .getAttributeInstance(EntityAttributes.ARMOR))
-                            .addPersistentModifier(new EntityAttributeModifier(
-                                    MODIFIER_ID,
-                                    20,
-                                    EntityAttributeModifier.Operation.ADD_VALUE
-                            ))
+                    .handler(((item, serverPlayerEntity) -> {
+                        try {
+                            Objects.requireNonNull(serverPlayerEntity
+                                            .getAttributeInstance(EntityAttributes.ARMOR))
+                                    .addPersistentModifier(new EntityAttributeModifier(
+                                            MODIFIER_ID,
+                                            20,
+                                            EntityAttributeModifier.Operation.ADD_VALUE
+                                    ));
+                        } catch (Exception ignored) {
+
+                        }
+                    }
                     ))
                     .hideDefaultTooltip(true)
                     .build()
@@ -104,7 +110,7 @@ public class ShopUtil {
             new ShopElement.Builder()
                     .item(ModItems.TELEPORTER)
                     .descriptions(List.of(
-                            byMiniMessage("훌륭한 Plan B 수단입니다."),
+                            byMiniMessage("훌륭한 예비 수단입니다."),
                             byMiniMessage("첫 사용 시 위치를 저장합니다. 두 번째 사용 시 저장된 위치로 순간이동합니다."),
                             byMiniMessage("위치 저장 후 3초 후 재 사용 가능합니다.")
                     ))
@@ -119,13 +125,19 @@ public class ShopUtil {
                             byMiniMessage("<red> 주의 ! 중복으로 구매해도 효과가 중첩되지 않습니다! </red>")
                     ))
                     .point(5)
-                    .handler((item, player) -> Objects.requireNonNull(player
-                                    .getAttributeInstance(EntityAttributes.WAYPOINT_RECEIVE_RANGE))
-                            .addPersistentModifier(new EntityAttributeModifier(
-                                    MODIFIER_ID,
-                                    25,
-                                    EntityAttributeModifier.Operation.ADD_VALUE)
-                            )
+                    .handler((item, player) -> {
+                                try {
+                                    Objects.requireNonNull(player
+                                                    .getAttributeInstance(EntityAttributes.WAYPOINT_RECEIVE_RANGE))
+                                            .addPersistentModifier(new EntityAttributeModifier(
+                                                    MODIFIER_ID,
+                                                    25,
+                                                    EntityAttributeModifier.Operation.ADD_VALUE)
+                                            );
+                                } catch (Exception ignored) {
+
+                                }
+                            }
                     )
                     .hideDefaultTooltip(true)
                     .build()
@@ -135,7 +147,7 @@ public class ShopUtil {
             new ShopElement.Builder()
                     .item(ModItems.TELEPORTER)
                     .descriptions(List.of(
-                            byMiniMessage("훌륭한 Plan B 수단입니다."),
+                            byMiniMessage("훌륭한 예비 수단입니다."),
                             byMiniMessage("첫 사용 시 위치를 저장합니다. 두 번째 사용 시 저장된 위치로 순간이동합니다."),
                             byMiniMessage("위치 저장 후 3초 후 재 사용 가능합니다.")
                     ))

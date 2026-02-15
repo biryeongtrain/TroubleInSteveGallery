@@ -9,7 +9,6 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
@@ -32,23 +31,26 @@ public class SuicideBomb extends Item implements PolymerItem, NonThrowable {
 
     @Override
     public ActionResult use(World world, PlayerEntity user, Hand hand) {
-        this.fusePlayer(user);
-        user.getMainHandStack().decrement(1);
-        return super.use(world, user, hand);
+        if (!this.fusePlayer(user)) {
+            return ActionResult.FAIL;
+        }
+
+        user.getStackInHand(hand).decrement(1);
+        return ActionResult.SUCCESS;
     }
 
-    private void fusePlayer(PlayerEntity player) {
+    private boolean fusePlayer(PlayerEntity player) {
         if (player.getWorld().isClient()) {
-            return;
+            return false;
         }
 
-        if (!GameManager.getInstance().getCurrentPhase().isInProgress()) {
-            return;
+        if (!GameManager.getInstance().getCurrentPhase().canShowRole()) {
+            return false;
         }
 
-        ServerPlayerEntity serverPlayer = (ServerPlayerEntity) player;
         InGameEventProvider provider = (InGameEventProvider) player;
-        player.getWorld().playSound(null, player.getBlockPos(), Sounds.JIHAD_BOMB_ACTIVE, SoundCategory.PLAYERS, 1.0f, 1.0f);
+        player.getWorld().playSound(null, player.getBlockPos(), Sounds.JIHAD_BOMB_ACTIVE, SoundCategory.PLAYERS, 0.5f, 1.0f);
         provider.tts$fuse(35);
+        return true;
     }
 }

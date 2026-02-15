@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "ttt-gametest",
+  "version": "1.0.0",
+  "name": "Trouble In Steve Gallery GameTests",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-gametest": [
+      "kim.biryeong.ttt.game.manager.GameRulesGameTest",
+      "kim.biryeong.ttt.EventsGameTest",
+      "kim.biryeong.ttt.ui.sidebar.CorpseSidebarGameTest"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.14",
+    "minecraft": [
+      "1.21.7",
+      "1.21.8"
+    ],
+    "fabric-api": "*"
+  }
+}

@@ -13,6 +13,7 @@ import eu.pb4.polymer.virtualentity.mixin.accessors.EntityAccessor;
 import eu.pb4.sidebars.api.SidebarInterface;
 import eu.pb4.sidebars.impl.SidebarHolder;
 import kim.biryeong.ttt.game.manager.GameManager;
+import kim.biryeong.ttt.item.ModItems;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.ui.sidebar.CorpseSidebar;
@@ -31,6 +32,7 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
+import java.util.Set;
 
 @SuppressWarnings("unused")
 public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEntity, Leashable {
@@ -43,6 +45,7 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
     private boolean animationPlayed = false;
     private InteractionElement hitboxInteraction;
     private DamageSource damageSource;
+    private boolean killerDiscoveryAnnounced = false;
 
     public CorpseEntity(EntityType<CorpseEntity> type, World world) {
         super(type, world);
@@ -110,8 +113,11 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
 
         // TODO SGUI Execute
         if (!isRevealed && GameManager.getInstance().isAlive(serverPlayer)) {
-            var playerRole = ((InGamePlayerInfoProvider) GameManager.getInstance().getPlayer(this.gameProfile.getId())).tts$getRole();
-            if (playerRole == null) playerRole = Role.SPECTATOR;
+            ServerPlayerEntity deadPlayer = GameManager.getInstance().getPlayer(this.gameProfile.getId());
+            Role playerRole = Role.SPECTATOR;
+            if (deadPlayer != null) {
+                playerRole = ((InGamePlayerInfoProvider) deadPlayer).tts$getRole();
+            }
             this.hitboxInteraction.setCustomName(
                     GameManager.byMiniMessage(
                             "<#color>%s's Corpse</#color>"
@@ -132,6 +138,8 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
             provider.tts$addPoints(2, InGamePlayerInfoProvider.PointReason.ROLE_PLAYING);
         }
 
+        this.tryAnnounceKillerDiscovery(serverPlayer);
+
         SidebarHolder sidebarHolder = SidebarHolder.of(serverPlayer.networkHandler);
         Optional<SidebarInterface> hasSidebar = sidebarHolder.sidebarApi$getAll().stream().filter(sidebar -> sidebar instanceof CorpseSidebar).findAny();
 
@@ -144,6 +152,49 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
         }
 
         return ActionResult.PASS;
+    }
+
+    private void tryAnnounceKillerDiscovery(ServerPlayerEntity investigator) {
+        if (this.killerDiscoveryAnnounced) {
+            return;
+        }
+
+        InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) investigator;
+        if (info.tts$getRole() != Role.DETECTIVE) {
+            return;
+        }
+
+        boolean hasScanner = investigator.getInventory().containsAny(Set.of(ModItems.DNA_SCANNER));
+        if (!hasScanner) {
+            return;
+        }
+
+        if (!(this.damageSource != null && this.damageSource.getAttacker() instanceof ServerPlayerEntity killer)) {
+            return;
+        }
+
+        this.killerDiscoveryAnnounced = true;
+        GameManager.getInstance().sendMessage(
+                "<gold>[DNA]</gold> %s님이 살인자를 특정했습니다: <red>%s</red>님이 <yellow>%s</yellow>님을 처치했습니다. (사망 원인: %s)"
+                        .formatted(
+                                investigator.getGameProfile().getName(),
+                                killer.getGameProfile().getName(),
+                                this.gameProfile.getName(),
+                                resolveKillMethod(this.damageSource)
+                        )
+        );
+    }
+
+    private static String resolveKillMethod(DamageSource source) {
+        if (source == null) {
+            return "알 수 없음";
+        }
+
+        return switch (source.getType().msgId()) {
+            case "arrow" -> "원거리 공격";
+            case "player" -> "근접 공격";
+            default -> "환경/기타";
+        };
     }
 
 

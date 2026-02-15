@@ -6,7 +6,9 @@ import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.util.NonThrowable;
 import kim.biryeong.ttt.util.Sounds;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.TooltipDisplayComponent;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
@@ -14,14 +16,21 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.item.tooltip.TooltipData;
+import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
+import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
 import xyz.nucleoid.packettweaker.PacketContext;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Consumer;
 
 public class RoleChecker extends Item implements PolymerItem, NonThrowable {
     public RoleChecker(Settings settings) {
@@ -30,7 +39,12 @@ public class RoleChecker extends Item implements PolymerItem, NonThrowable {
 
     @Override
     public Item getPolymerItem(ItemStack itemStack, PacketContext context) {
-        return Items.PAPER;
+        return Items.END_CRYSTAL;
+    }
+
+    @Override
+    public @Nullable Identifier getPolymerItemModel(ItemStack stack, PacketContext context) {
+        return null;
     }
 
     @Override
@@ -62,6 +76,12 @@ public class RoleChecker extends Item implements PolymerItem, NonThrowable {
         stack.decrement(1);
 
         return ActionResult.SUCCESS;
+    }
+
+    @Override
+    public void modifyClientTooltip(List<Text> tooltip, ItemStack stack, PacketContext context) {
+        tooltip.add(GameManager.byMiniMessage("<blue> 탐정용 아이템입니다. 아이템을 들고 우클릭 하면"));
+        tooltip.add(GameManager.byMiniMessage("<blue> 적중한 플레이어의 정보가 나옵니다."));
     }
 }
 

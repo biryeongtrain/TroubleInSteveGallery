@@ -20,149 +20,205 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @ApiStatus.Internal
 final class GameDataManager {
-    private final Logger LOGGER = LoggerFactory.getLogger("TTS_DataManager");
-    private final Gson GSON = new Gson();
-    private final Map<UUID, PlayerDataInstance> DATA_MAP = new ConcurrentHashMap<>();
-    private final Map<UUID, PlayerRoundDataInstance> ROUND_DATA_MAP = new ConcurrentHashMap<>();
-    private final Path TTS_PATH;
+    private static final String PLAYER_DATA_DIRECTORY = "playerData";
+    private static final String ROUND_DATA_DIRECTORY = "roundData";
+
+    private final Logger logger = LoggerFactory.getLogger("TTS_DataManager");
+    private final Gson gson = new Gson();
+    private final Map<UUID, PlayerDataInstance> playerDataByUuid = new ConcurrentHashMap<>();
+    private final Map<UUID, PlayerRoundDataInstance> roundDataByUuid = new ConcurrentHashMap<>();
+    private final Path ttsPath;
     private final GameManager gameManager;
 
     GameDataManager(GameManager gameManager) {
         this.gameManager = gameManager;
-        TTS_PATH = FabricLoader.getInstance().getGameDir().resolve("tts");
+        this.ttsPath = FabricLoader.getInstance().getGameDir().resolve("tts");
     }
 
     boolean tryToLoadPlayerData(UUID uuid) {
-        if (!Files.exists(TTS_PATH)) {
-            try {
-                Files.createDirectories(TTS_PATH);
-            } catch (IOException e) {
-                gameManager.LOGGER.error("cannot create directory for player data", e);
-                return false;
-            }
+        if (!ensureDirectory(this.ttsPath, "base tts data")) {
+            return false;
         }
 
-        Path path = getPlayerDataPath(uuid.toString());
+        Path path = getPlayerDataPath(uuid);
         if (!Files.exists(path)) {
             return false;
         }
+
         try {
-            var string = Files.readString(path);
-            JsonElement json = GSON.fromJson(string, JsonElement.class);
-            var data = PlayerDataInstance.CODEC.decode(JsonOps.INSTANCE, json).getOrThrow();
-            DATA_MAP.put(uuid, data.getFirst());
+            String string = Files.readString(path);
+            JsonElement json = this.gson.fromJson(string, JsonElement.class);
+            PlayerDataInstance data = PlayerDataInstance.CODEC.decode(JsonOps.INSTANCE, json).getOrThrow().getFirst();
+            this.playerDataByUuid.put(uuid, data);
             return true;
-        } catch (Exception e) {
-            LOGGER.error("cannot read player data", e);
-            try {
-                LOGGER.warn("copy backup data to");
-                Files.copy(path, getPlayerDataPath(uuid + "-bak.json"));
-            } catch (IOException ex) {
-                LOGGER.error("cannot backup player data", ex);
-            }
+        } catch (Exception exception) {
+            this.logger.error("Cannot read player data for {} from {}", uuid, path, exception);
+            backupCorruptedPlayerData(uuid, path);
             return false;
         }
     }
 
     void createNewData(UUID uuid) {
-        DATA_MAP.put(uuid, PlayerDataInstance.createNew(uuid));
+        this.playerDataByUuid.put(uuid, PlayerDataInstance.createNew(uuid));
     }
 
     void saveAll() {
-        this.DATA_MAP.values().forEach(v -> this.saveData(v.getUuid(), false));
+        for (UUID uuid : Set.copyOf(this.playerDataByUuid.keySet())) {
+            saveData(uuid, false);
+        }
     }
 
-    void saveData(UUID uuid, boolean left) {
-        try {
-            Files.createDirectories(TTS_PATH.resolve("playerData"));
-        } catch (IOException e) {
-            gameManager.LOGGER.error("cannot create directory for player data", e);
+    void saveData(UUID uuid, boolean removeAfterSave) {
+        if (!ensureDirectory(this.ttsPath.resolve(PLAYER_DATA_DIRECTORY), "player data")) {
             return;
         }
-        Path path = getPlayerDataPath(uuid.toString());
-        var data = left ? DATA_MAP.remove(uuid) : DATA_MAP.get(uuid);
-        var string = PlayerDataInstance.CODEC.encodeStart(JsonOps.INSTANCE, data).getOrThrow().toString();
-        try {
-            Files.writeString(path, string);
-        } catch (Exception e) {
-            LOGGER.error("cannot save player data", e);
-            LOGGER.info("unsaved data : \n {}", string);
+
+        PlayerDataInstance data = removeAfterSave
+                ? this.playerDataByUuid.remove(uuid)
+                : this.playerDataByUuid.get(uuid);
+
+        if (data == null) {
+            this.logger.warn("Cannot save player data: no loaded data exists for {}", uuid);
+            return;
         }
+
+        String encoded;
+        try {
+            encoded = PlayerDataInstance.CODEC.encodeStart(JsonOps.INSTANCE, data).getOrThrow().toString();
+        } catch (Exception exception) {
+            this.logger.error("Cannot encode player data for {}", uuid, exception);
+            return;
+        }
+
+        writeText(getPlayerDataPath(uuid), encoded, "player data", uuid.toString());
     }
 
     void saveRoundData() {
-        try {
-            Files.createDirectories(TTS_PATH.resolve("roundData"));
-        } catch (IOException e) {
-            gameManager.LOGGER.error("cannot create directory for round data", e);
+        if (this.roundDataByUuid.isEmpty()) {
             return;
         }
+
         Date date = Date.fromNow();
-        try {
-            Files.createDirectories(TTS_PATH.resolve("roundData").resolve(date.toString()));
-        } catch (IOException e) {
-            gameManager.LOGGER.error("cannot create directory for round data", e);
+        Path roundDirectoryPath = this.ttsPath.resolve(ROUND_DATA_DIRECTORY).resolve(date.toString());
+        if (!ensureDirectory(roundDirectoryPath, "round data")) {
             return;
         }
-        ROUND_DATA_MAP.forEach((uuid, roundData) -> {
-            Path path = getRoundDataPath(date, uuid.toString());
-            var string = PlayerRoundDataInstance.CODEC.encodeStart(JsonOps.INSTANCE, roundData).getOrThrow().toString();
+
+        this.roundDataByUuid.forEach((uuid, roundData) -> {
+            String encoded;
             try {
-                Files.writeString(path, string);
-            } catch (Exception e) {
-                LOGGER.error("cannot save round data for player {}", uuid, e);
-                LOGGER.info("unsaved round data : \n {}", string);
-            }
-        });
-
-        ROUND_DATA_MAP.clear();
-    }
-
-
-    void startToRecordKillData() {
-        var manager = GameManager.server.getPlayerManager();
-        GameManager.getInstance().getPlayers().forEach(pUUID -> {
-            ServerPlayerEntity player = manager.getPlayer(pUUID);
-            if (player == null) {
-                LOGGER.error("Player {} is not found! it can't be happened! removing this player in participant list...", pUUID);
-                GameManager.getInstance().getPlayers().remove(pUUID);
+                encoded = PlayerRoundDataInstance.CODEC.encodeStart(JsonOps.INSTANCE, roundData).getOrThrow().toString();
+            } catch (Exception exception) {
+                this.logger.error("Cannot encode round data for {}", uuid, exception);
                 return;
             }
-            ROUND_DATA_MAP.put(pUUID, PlayerRoundDataInstance.create(player));
+            writeText(getRoundDataPath(date, uuid), encoded, "round data", uuid.toString());
         });
+
+        this.roundDataByUuid.clear();
     }
 
-    void recordKillData(ServerPlayerEntity killer, ServerPlayerEntity victim, DamageSource damageSource) {
+    void startToRecordKillData() {
+        var playerManager = GameManager.server.getPlayerManager();
+        Set<UUID> participants = Set.copyOf(GameManager.getInstance().getPlayers());
+
+        for (UUID participantUuid : participants) {
+            ServerPlayerEntity player = playerManager.getPlayer(participantUuid);
+            if (player == null) {
+                this.logger.warn(
+                        "Cannot initialize round kill tracking for {}: player is not online",
+                        participantUuid
+                );
+                continue;
+            }
+            this.roundDataByUuid.put(participantUuid, PlayerRoundDataInstance.create(player));
+        }
+    }
+
+    void recordKillData(@Nullable ServerPlayerEntity killer, ServerPlayerEntity victim, DamageSource damageSource) {
         if (!GameManager.getInstance().isGameStarted()) {
-            throw new IllegalStateException("Game is not started!");
+            throw new IllegalStateException("Game is not started.");
         }
+
+        int elapsedSeconds = this.gameManager.gameInstanceManager.getElapsedTicks() / 20;
         if (killer != null) {
-            var killerData = Objects.requireNonNull(ROUND_DATA_MAP.get(killer.getUuid()));
-            killerData.recordKillData(gameManager.gameInstanceManager.getElapsedTicks() / 20, victim, damageSource);
+            recordRoundKillData(killer.getUuid(), elapsedSeconds, victim, damageSource);
         }
-        var victimData = Objects.requireNonNull(ROUND_DATA_MAP.get(victim.getUuid()));
-        victimData.recordKillData(gameManager.gameInstanceManager.getElapsedTicks() / 20, killer, damageSource);
+        recordRoundKillData(victim.getUuid(), elapsedSeconds, killer, damageSource);
     }
 
-    private Path getPlayerDataPath(String data) {
-        return TTS_PATH.resolve("playerData").resolve(data + ".json");
+    private void recordRoundKillData(
+            UUID recorderUuid,
+            int elapsedSeconds,
+            @Nullable ServerPlayerEntity counterpartPlayer,
+            DamageSource damageSource
+    ) {
+        PlayerRoundDataInstance roundData = this.roundDataByUuid.get(recorderUuid);
+        if (roundData == null) {
+            this.logger.warn(
+                    "Cannot record kill data for {}: round data is not initialized",
+                    recorderUuid
+            );
+            return;
+        }
+
+        roundData.recordKillData(elapsedSeconds, counterpartPlayer, damageSource);
     }
 
-    private Path getRoundDataPath(Date date, String data) {
-        return TTS_PATH.resolve("roundData").resolve(date.toString()).resolve( data + ".json");
+    private void backupCorruptedPlayerData(UUID uuid, Path sourcePath) {
+        Path backupPath = getPlayerDataBackupPath(uuid);
+        try {
+            Files.copy(sourcePath, backupPath);
+        } catch (IOException exception) {
+            this.logger.error("Cannot backup corrupted player data {} to {}", sourcePath, backupPath, exception);
+        }
+    }
+
+    private boolean ensureDirectory(Path path, String operationTarget) {
+        try {
+            Files.createDirectories(path);
+            return true;
+        } catch (IOException exception) {
+            this.gameManager.LOGGER.error("Cannot create directory for {}", operationTarget, exception);
+            return false;
+        }
+    }
+
+    private void writeText(Path path, String encodedData, String dataType, String identifier) {
+        try {
+            Files.writeString(path, encodedData);
+        } catch (IOException exception) {
+            this.logger.error("Cannot save {} for {}", dataType, identifier, exception);
+            this.logger.info("Unpersisted {} payload: {}", dataType, encodedData);
+        }
+    }
+
+    private Path getPlayerDataPath(UUID uuid) {
+        return this.ttsPath.resolve(PLAYER_DATA_DIRECTORY).resolve(uuid + ".json");
+    }
+
+    private Path getPlayerDataBackupPath(UUID uuid) {
+        return this.ttsPath.resolve(PLAYER_DATA_DIRECTORY).resolve(uuid + "-bak.json");
+    }
+
+    private Path getRoundDataPath(Date date, UUID uuid) {
+        return this.ttsPath.resolve(ROUND_DATA_DIRECTORY).resolve(date.toString()).resolve(uuid + ".json");
     }
 
     public @NotNull PlayerDataInstance getData(ServerPlayerEntity player) {
-        return getData(player.getUuid());
+        return Objects.requireNonNull(
+                getData(player.getUuid()),
+                "Missing player data for " + player.getUuid()
+        );
     }
 
     public @Nullable PlayerDataInstance getData(UUID uuid) {
-        // this can not be null. all online player must have their data instance
-        return (DATA_MAP.get(uuid));
+        return this.playerDataByUuid.get(uuid);
     }
 }

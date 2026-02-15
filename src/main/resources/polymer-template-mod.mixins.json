@@ -9,6 +9,8 @@
     "ExampleMixin",
     "PersistentProjectileEntityAccessor",
     "PersistentProjectileEntityMixin",
+    "RecorderNotifierMixin",
+    "ServerConfigurationNetworkHandlerMixin",
     "ServerPlayerEntityMixin",
     "ServerPlayNetworkHandlerMixin",
     "block.AbstractBlockStateMixin"

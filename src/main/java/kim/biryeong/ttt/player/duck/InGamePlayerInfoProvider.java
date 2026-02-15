@@ -17,6 +17,7 @@ public interface InGamePlayerInfoProvider {
     Role tts$getRole();
     int tts$getPoints();
     void tts$setRole(Role role);
+    void tts$setDenyToPlay(boolean denyToPlay);
     void tts$addPoints(int points, PointReason reason);
     void tts$clearPoints();
     boolean tts$isAlive();

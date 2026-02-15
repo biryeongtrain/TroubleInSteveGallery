@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/bow",
+  "textures": {
+    "layer0": "ttt:item/assassin_bow_pulling_2"
+  }
+}

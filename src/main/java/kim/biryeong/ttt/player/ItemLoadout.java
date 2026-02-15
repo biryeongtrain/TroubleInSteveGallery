@@ -9,6 +9,8 @@ import java.util.List;
 
 public record ItemLoadout(Text displayName, List<Text> description, Identifier loadoutId, List<ItemStack> items) {
     public void giveToPlayer(ServerPlayerEntity player) {
-        this.items.forEach(player::giveItemStack);
+        this.items.stream()
+                .map(ItemStack::copy)
+                .forEach(player::giveItemStack);
     }
 }
