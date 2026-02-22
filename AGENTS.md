@@ -189,11 +189,17 @@ Scope: entire repository unless a deeper `AGENTS.md` overrides this file.
   - runtime/lifecycle/mixin/world changes: `runServer` spot checks
   - generated assets/translations/models changes: `runDatagen`
   - gameplay test flows: `runGameTest` when tests are available or newly added
+- Prefer `runGameTest` first for gameplay verification when it can validate the change without a long-running server.
+- When stopping verification tasks, terminate only processes started for the current task/session (track PID/process handle when launching).
 - If verification cannot be performed, state limitations explicitly.
 
 ### RECOMMENDED
 - Add focused GameTests for non-trivial gameplay logic changes.
 - Keep generated resources in sync when datagen-affecting code is changed.
+
+### FORBIDDEN
+- Do not terminate unrelated `java`/`gradle` processes on the machine.
+- Do not use broad kill patterns that can stop all Java processes when cleaning up test runs.
 
 ---
 
