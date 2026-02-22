@@ -6,6 +6,7 @@ import kim.biryeong.ttt.game.data.PlayerDataInstance;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.util.FakeTeam;
+import kim.biryeong.ttt.util.Sounds;
 import kim.biryeong.ttt.util.Scheduler;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.FireworkExplosionComponent;
@@ -18,9 +19,12 @@ import net.minecraft.entity.projectile.FireworkRocketEntity;
 import net.minecraft.item.Items;
 import net.minecraft.network.packet.s2c.play.EntityTrackerUpdateS2CPacket;
 import net.minecraft.network.packet.s2c.play.TeamS2CPacket;
+import net.minecraft.scoreboard.AbstractTeam;
 import net.minecraft.scoreboard.Team;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvent;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import org.jetbrains.annotations.Nullable;
@@ -41,6 +45,8 @@ import java.util.stream.Collectors;
 @SuppressWarnings("unused")
 class GameInstanceManager {
     private static final int TICKS_PER_SECOND = 20;
+    private static final int WARMUP_COUNTDOWN_SOUND_START_SECONDS = 5;
+    private static final int WARMUP_COUNTDOWN_SOUND_START_TICKS = WARMUP_COUNTDOWN_SOUND_START_SECONDS * TICKS_PER_SECOND;
     private static final int ROUND_LOG_INTERVAL_TICKS = 200;
     private static final int WIN_CHECK_INTERVAL_TICKS = TICKS_PER_SECOND;
     private static final int PLAYED_POINT_INTERVAL_TICKS = 1200;
@@ -60,6 +66,7 @@ class GameInstanceManager {
     private final Set<UUID> aliveParticipants = new HashSet<>();
     private final Set<UUID> fakeTraitorTeamRecipients = new HashSet<>();
     private final Set<UUID> fakeDetectiveTeamRecipients = new HashSet<>();
+    private final Set<UUID> fakeHiddenNameTagTeamRecipients = new HashSet<>();
     private final Map<UUID, Integer> karma = new HashMap<>();
 
     private int aliveTraitors = 0;
@@ -74,6 +81,7 @@ class GameInstanceManager {
     private boolean shouldTick = true;
     private Team fakeTraitorTeam;
     private Team fakeDetectiveTeam;
+    private Team fakeHiddenNameTagTeam;
 
     public void initialize(List<UUID> participantUuids) {
         this.participants.clear();
@@ -92,8 +100,10 @@ class GameInstanceManager {
         this.shouldTick = true;
         this.fakeTraitorTeamRecipients.clear();
         this.fakeDetectiveTeamRecipients.clear();
+        this.fakeHiddenNameTagTeamRecipients.clear();
         this.fakeTraitorTeam = null;
         this.fakeDetectiveTeam = null;
+        this.fakeHiddenNameTagTeam = null;
 
         Config config = Config.getInstance();
         this.gamePlayTimeTicks = config.playTimeSeconds * TICKS_PER_SECOND;
@@ -164,12 +174,41 @@ class GameInstanceManager {
     }
 
     void onRoundStarted() {
+        refreshHiddenNameTagTeamPackets();
         refreshDetectiveTeamPackets();
     }
 
     void onAudienceChanged() {
+        refreshHiddenNameTagTeamPackets();
         refreshDetectiveTeamPackets();
         refreshTraitorTeamPackets();
+    }
+
+    boolean canReceiveTraitorRevealPackets(ServerPlayerEntity player) {
+        InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
+        return shouldReceiveTraitorRevealPackets(this.isAlive(player), info.tts$getRole());
+    }
+
+    static boolean shouldReceiveTraitorRevealPackets(boolean alive, Role role) {
+        if (role == Role.TRAITOR) {
+            return alive;
+        }
+        return !alive;
+    }
+
+    static boolean shouldSendDetectiveTeamPackets(GameManager.Phase phase) {
+        return phase.canShowRole();
+    }
+
+    static boolean shouldSendHiddenNameTagTeamPackets(GameManager.Phase phase) {
+        return phase.isInProgress();
+    }
+
+    static boolean shouldHidePlayerNameTag(GameManager.Phase phase, Role role) {
+        if (!phase.canShowRole()) {
+            return true;
+        }
+        return role != Role.DETECTIVE;
     }
 
     void onPlayerDamaged(@Nullable ServerPlayerEntity attacker, ServerPlayerEntity victim, float amount) {
@@ -227,12 +266,51 @@ class GameInstanceManager {
             return false;
         }
 
+        playWarmupCountdownSoundIfNeeded(this.warmupTimeTick);
+
         if (this.warmupTimeTick <= 0) {
-            GameManager.getInstance().setPhase(GameManager.Phase.MIDDLE_GAME);
+            GameManager manager = GameManager.getInstance();
+            manager.setPhase(GameManager.Phase.MIDDLE_GAME);
+            refreshHiddenNameTagTeamPackets();
+            refreshDetectiveTeamPackets();
             refreshTraitorTeamPackets();
+            manager.onCombatPhaseStarted();
         }
         this.warmupTimeTick--;
         return true;
+    }
+
+    private static void playWarmupCountdownSoundIfNeeded(int warmupTicksLeft) {
+        if (!shouldPlayWarmupCountdownSound(warmupTicksLeft)) {
+            return;
+        }
+
+        int secondsLeft = warmupTicksLeft / TICKS_PER_SECOND;
+        SoundEvent soundEvent = getWarmupCountdownSound(secondsLeft);
+        if (soundEvent == null || GameManager.server == null) {
+            return;
+        }
+
+        for (ServerPlayerEntity player : GameManager.server.getPlayerManager().getPlayerList()) {
+            player.playSoundToPlayer(soundEvent, SoundCategory.MASTER, 1.0f, 1.0f);
+        }
+    }
+
+    static boolean shouldPlayWarmupCountdownSound(int warmupTicksLeft) {
+        return warmupTicksLeft > 0
+                && warmupTicksLeft <= WARMUP_COUNTDOWN_SOUND_START_TICKS
+                && warmupTicksLeft % TICKS_PER_SECOND == 0;
+    }
+
+    static @Nullable SoundEvent getWarmupCountdownSound(int secondsLeft) {
+        return switch (secondsLeft) {
+            case 5 -> Sounds.COUNTDOWN_5_SEC;
+            case 4 -> Sounds.COUNTDOWN_4_SEC;
+            case 3 -> Sounds.COUNTDOWN_3_SEC;
+            case 2 -> Sounds.COUNTDOWN_2_SEC;
+            case 1 -> Sounds.COUNTDOWN_1_SEC;
+            default -> null;
+        };
     }
 
     private void logRoundProgressIfNeeded() {
@@ -299,6 +377,7 @@ class GameInstanceManager {
             }
 
             GameManager.getInstance().setPhase(GameManager.Phase.OVER_TIME);
+            GameManager.getInstance().onOvertimeStarted();
             GameManager.getInstance().sendMessage("<red>오버타임 시작! 배신자가 처치로 추가 시간을 획득했습니다.</red>");
         }
 
@@ -376,11 +455,16 @@ class GameInstanceManager {
         return this.aliveParticipants.contains(player.getUuid());
     }
 
+    public int getAliveParticipantCount() {
+        return this.aliveParticipants.size();
+    }
+
     public int getElapsedTicks() {
         return this.elapsedTicks;
     }
 
     public void clear() {
+        clearHiddenNameTagTeamPackets();
         clearTraitorTeamPackets();
         clearDetectiveTeamPackets();
 
@@ -429,9 +513,11 @@ class GameInstanceManager {
         this.karma.remove(playerUuid);
         this.fakeTraitorTeamRecipients.remove(playerUuid);
         this.fakeDetectiveTeamRecipients.remove(playerUuid);
+        this.fakeHiddenNameTagTeamRecipients.remove(playerUuid);
 
         removeAliveParticipant(playerUuid, playerInfo.tts$getRole());
 
+        refreshHiddenNameTagTeamPackets();
         refreshDetectiveTeamPackets();
         refreshTraitorTeamPackets();
     }
@@ -453,6 +539,7 @@ class GameInstanceManager {
 
         removeAliveParticipant(victimUuid, victimInfo.tts$getRole());
 
+        refreshHiddenNameTagTeamPackets();
         refreshDetectiveTeamPackets();
         refreshTraitorTeamPackets();
     }
@@ -568,6 +655,7 @@ class GameInstanceManager {
         Team team = new Team(GameManager.server.getScoreboard(), FakeTeam.TRAITOR_TEAM_NAME);
         team.setColor(Formatting.RED);
         team.setShowFriendlyInvisibles(true);
+        team.setNameTagVisibilityRule(AbstractTeam.VisibilityRule.NEVER);
         this.fakeTraitorTeam = team;
         return team;
     }
@@ -580,8 +668,57 @@ class GameInstanceManager {
         Team team = new Team(GameManager.server.getScoreboard(), FakeTeam.DETECTIVE_TEAM_NAME);
         team.setColor(Formatting.BLUE);
         team.setShowFriendlyInvisibles(true);
+        team.setNameTagVisibilityRule(AbstractTeam.VisibilityRule.ALWAYS);
         this.fakeDetectiveTeam = team;
         return team;
+    }
+
+    private Team getOrCreateFakeHiddenNameTagTeam() {
+        if (this.fakeHiddenNameTagTeam != null) {
+            return this.fakeHiddenNameTagTeam;
+        }
+
+        Team team = new Team(GameManager.server.getScoreboard(), FakeTeam.HIDDEN_NAMETAG_TEAM_NAME);
+        team.setColor(Formatting.WHITE);
+        team.setShowFriendlyInvisibles(true);
+        team.setNameTagVisibilityRule(AbstractTeam.VisibilityRule.NEVER);
+        this.fakeHiddenNameTagTeam = team;
+        return team;
+    }
+
+    private void refreshHiddenNameTagTeamPackets() {
+        if (!shouldSendHiddenNameTagTeamPackets(GameManager.getInstance().getCurrentPhase())) {
+            clearHiddenNameTagTeamPackets();
+            return;
+        }
+
+        Team team = getOrCreateFakeHiddenNameTagTeam();
+        updateHiddenNameTagTeamMembers(team);
+
+        Set<UUID> currentRecipients = GameManager.server.getPlayerManager().getPlayerList().stream()
+                .map(ServerPlayerEntity::getUuid)
+                .collect(Collectors.toSet());
+
+        for (UUID previousRecipient : Set.copyOf(this.fakeHiddenNameTagTeamRecipients)) {
+            if (currentRecipients.contains(previousRecipient)) {
+                continue;
+            }
+
+            ServerPlayerEntity player = GameManager.server.getPlayerManager().getPlayer(previousRecipient);
+            if (player != null) {
+                player.networkHandler.sendPacket(TeamS2CPacket.updateRemovedTeam(team));
+            }
+        }
+
+        for (UUID currentRecipient : currentRecipients) {
+            ServerPlayerEntity player = GameManager.server.getPlayerManager().getPlayer(currentRecipient);
+            if (player != null) {
+                player.networkHandler.sendPacket(TeamS2CPacket.updateTeam(team, true));
+            }
+        }
+
+        this.fakeHiddenNameTagTeamRecipients.clear();
+        this.fakeHiddenNameTagTeamRecipients.addAll(currentRecipients);
     }
 
     private void refreshTraitorTeamPackets() {
@@ -592,10 +729,8 @@ class GameInstanceManager {
         Team team = getOrCreateFakeTraitorTeam();
         updateFakeTraitorTeamMembers(team);
 
-        Set<UUID> currentRecipients = this.aliveParticipants.stream()
-                .map(GameManager.server.getPlayerManager()::getPlayer)
-                .filter(Objects::nonNull)
-                .filter(player -> ((InGamePlayerInfoProvider) player).tts$getRole() == Role.TRAITOR)
+        Set<UUID> currentRecipients = GameManager.server.getPlayerManager().getPlayerList().stream()
+                .filter(this::canReceiveTraitorRevealPackets)
                 .map(ServerPlayerEntity::getUuid)
                 .collect(Collectors.toSet());
 
@@ -624,7 +759,7 @@ class GameInstanceManager {
     }
 
     private void refreshDetectiveTeamPackets() {
-        if (!GameManager.getInstance().getCurrentPhase().isInProgress()) {
+        if (!shouldSendDetectiveTeamPackets(GameManager.getInstance().getCurrentPhase())) {
             clearDetectiveTeamPackets();
             return;
         }
@@ -721,6 +856,35 @@ class GameInstanceManager {
                 .filter(player -> ((InGamePlayerInfoProvider) player).tts$getRole() == Role.DETECTIVE)
                 .map(ServerPlayerEntity::getNameForScoreboard)
                 .forEach(team.getPlayerList()::add);
+    }
+
+    private void updateHiddenNameTagTeamMembers(Team team) {
+        GameManager.Phase phase = GameManager.getInstance().getCurrentPhase();
+        team.getPlayerList().clear();
+        this.participants.stream()
+                .map(GameManager.server.getPlayerManager()::getPlayer)
+                .filter(Objects::nonNull)
+                .filter(player -> shouldHidePlayerNameTag(phase, ((InGamePlayerInfoProvider) player).tts$getRole()))
+                .map(ServerPlayerEntity::getNameForScoreboard)
+                .forEach(team.getPlayerList()::add);
+    }
+
+    private void clearHiddenNameTagTeamPackets() {
+        if (this.fakeHiddenNameTagTeam == null) {
+            this.fakeHiddenNameTagTeamRecipients.clear();
+            return;
+        }
+
+        TeamS2CPacket removePacket = TeamS2CPacket.updateRemovedTeam(this.fakeHiddenNameTagTeam);
+        for (UUID recipient : this.fakeHiddenNameTagTeamRecipients) {
+            ServerPlayerEntity player = GameManager.server.getPlayerManager().getPlayer(recipient);
+            if (player != null) {
+                player.networkHandler.sendPacket(removePacket);
+            }
+        }
+
+        this.fakeHiddenNameTagTeamRecipients.clear();
+        this.fakeHiddenNameTagTeam = null;
     }
 
     private void clearTraitorTeamPackets() {

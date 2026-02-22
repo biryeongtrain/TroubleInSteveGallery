@@ -28,9 +28,10 @@ public class ShopUtil {
                     .name(byMiniMessage("<green>추가 갑옷!</green>"))
                     .descriptions(List.of(
                             byMiniMessage("갑옷 포인트 20를 얻습니다."),
-                            byMiniMessage("약 40%의 피해 감소 효과가 있습니다.")
+                            byMiniMessage("약 40%의 피해 감소 효과가 있습니다."),
+                            byMiniMessage("구매비용 : 11 포인트")
                     ))
-                    .point(8)
+                    .point(11)
                     .handler(((item, serverPlayerEntity) -> Objects.requireNonNull(serverPlayerEntity
                                     .getAttributeInstance(EntityAttributes.ARMOR))
                             .addPersistentModifier(new EntityAttributeModifier(
@@ -52,9 +53,10 @@ public class ShopUtil {
                             byMiniMessage("<green> + </green> 화살이 일직선으로 날아갑니다."),
                             byMiniMessage("<green> + </green> 투사체 속도가 20배 증가합니다."),
                             byMiniMessage("<red> - </red> 치명타가 발생하지 않습니다. "),
-                            byMiniMessage("<red> - </red> 내구도가 10으로 제한됩니다.")
+                            byMiniMessage("<red> - </red> 내구도가 10으로 제한됩니다."),
+                            byMiniMessage("구매비용 : 9 포인트")
                     ))
-                    .point(11)
+                    .point(9)
                     .build()
             ,
             new ShopElement.Builder()
@@ -63,9 +65,10 @@ public class ShopUtil {
                             byMiniMessage("너도 나도 한번에 다같이."),
                             byMiniMessage(""),
                             byMiniMessage("<green> + </green> 5초 후 7*7*7 범위에 1557 데미지를 입힙니다."),
-                            byMiniMessage("<red> - </red> 예외는 없습니다. 당신도 폭발 피해를 입습니다.")
+                            byMiniMessage("<red> - </red> 예외는 없습니다. 당신도 폭발 피해를 입습니다."),
+                            byMiniMessage("구매비용 : 17 포인트")
                     ))
-                    .point(25)
+                    .point(17)
                     .build()
             ,
             new ShopElement.Builder()
@@ -75,9 +78,10 @@ public class ShopUtil {
                             byMiniMessage(""),
                             byMiniMessage("<green> + </green> 적중한 적에게 1557 + 1 데미지를 입힙니다."),
                             byMiniMessage("<red> - </red> 1회용입니다."),
-                            byMiniMessage("<red> - </red> 사거리가 2 감소합니다.")
+                            byMiniMessage("<red> - </red> 사거리가 2 감소합니다."),
+                            byMiniMessage("구매비용 : 11 포인트")
                     ))
-                    .point(9)
+                    .point(11)
                     .build()
             ,
             new ShopElement.Builder()
@@ -87,7 +91,8 @@ public class ShopUtil {
                             byMiniMessage("갑옷 포인트 20을 얻습니다."),
                             byMiniMessage("약 40%의 피해 감소 효과가 있습니다."),
                             Text.empty(),
-                            Text.literal("<red> 주의 ! 중복으로 구매해도 효과가 중첩되지 않습니다! </red>")
+                            Text.literal("<red> 주의 ! 중복으로 구매해도 효과가 중첩되지 않습니다! </red>"),
+                            byMiniMessage("구매비용 : 2 포인트")
                     ))
                     .point(2)
                     .handler(((item, serverPlayerEntity) -> {
@@ -112,17 +117,19 @@ public class ShopUtil {
                     .descriptions(List.of(
                             byMiniMessage("훌륭한 예비 수단입니다."),
                             byMiniMessage("첫 사용 시 위치를 저장합니다. 두 번째 사용 시 저장된 위치로 순간이동합니다."),
-                            byMiniMessage("위치 저장 후 3초 후 재 사용 가능합니다.")
+                            byMiniMessage("위치 저장 후 3초 후 재 사용 가능합니다."),
+                            byMiniMessage("구매비용 : 9 포인트")
                     ))
-                    .point(11)
+                    .point(9)
                     .build()
             ,
             new ShopElement.Builder()
                     .item(Items.COMPASS)
                     .name(byMiniMessage("<red>플레이어 추적기</red>"))
                     .descriptions(List.of(
-                            byMiniMessage("네비게이터를 활성화하여 25블록 이내의 플레이어를 탐지합니다."),
-                            byMiniMessage("<red> 주의 ! 중복으로 구매해도 효과가 중첩되지 않습니다! </red>")
+                            byMiniMessage("네비게이터를 활성화하여 50블록 이내의 플레이어를 탐지합니다."),
+                            byMiniMessage("<red>주의 ! 중복으로 구매해도 효과가 중첩되지 않습니다!</red>"),
+                            byMiniMessage("구매비용 : 5 포인트")
                     ))
                     .point(5)
                     .handler((item, player) -> {
@@ -131,7 +138,7 @@ public class ShopUtil {
                                                     .getAttributeInstance(EntityAttributes.WAYPOINT_RECEIVE_RANGE))
                                             .addPersistentModifier(new EntityAttributeModifier(
                                                     MODIFIER_ID,
-                                                    25,
+                                                    50,
                                                     EntityAttributeModifier.Operation.ADD_VALUE)
                                             );
                                 } catch (Exception ignored) {
@@ -140,6 +147,17 @@ public class ShopUtil {
                             }
                     )
                     .hideDefaultTooltip(true)
+                    .build(),
+
+            new ShopElement.Builder()
+                    .item(Items.BLAZE_ROD)
+                    .name(byMiniMessage("<red>시체 제거기</red>"))
+                    .descriptions(List.of(
+                            byMiniMessage("플레이어의 시체를 지웁니다."),
+                            byMiniMessage("약 5초동안 불탄 다음, <red><bold>흔적도 없이 사라지게 만듭니다.</red>"),
+                            byMiniMessage("불타고 있는 시체는 <red><bold>더 이상 조사할 수 없습니다.</red>"),
+                            byMiniMessage("구매 비용 : 5 포인트")
+                    ))
                     .build()
     );
 
@@ -149,7 +167,8 @@ public class ShopUtil {
                     .descriptions(List.of(
                             byMiniMessage("훌륭한 예비 수단입니다."),
                             byMiniMessage("첫 사용 시 위치를 저장합니다. 두 번째 사용 시 저장된 위치로 순간이동합니다."),
-                            byMiniMessage("위치 저장 후 3초 후 재 사용 가능합니다.")
+                            byMiniMessage("위치 저장 후 3초 후 재 사용 가능합니다."),
+                            byMiniMessage("구매비용 : 7 포인트")
                     ))
                     .point(7)
                     .build()
@@ -159,7 +178,8 @@ public class ShopUtil {
                     .name(byMiniMessage("<blue>추가 갑옷!</blue>"))
                     .descriptions(List.of(
                             byMiniMessage("갑옷 포인트 20를 얻습니다."),
-                            byMiniMessage("약 30%의 피해 감소 효과가 있습니다.")
+                            byMiniMessage("약 30%의 피해 감소 효과가 있습니다."),
+                            byMiniMessage("구매비용 : 2 포인트")
                     ))
                     .point(2)
                     .handler(((item, serverPlayerEntity) -> Objects.requireNonNull(serverPlayerEntity
@@ -178,7 +198,8 @@ public class ShopUtil {
                     .descriptions(List.of(
                             byMiniMessage("피해자의 DNA를 분석하여 최근 공격자를 찾아냅니다."),
                             byMiniMessage("시체 조사 시 처치한 사람의 닉네임이 공개됩니다."),
-                            byMiniMessage("폭발 피해, 환경 데미지 등으로 인한 사망은 닉네임이 공개되지 않습니다.")
+                            byMiniMessage("폭발 피해, 환경 데미지 등으로 인한 사망은 닉네임이 공개되지 않습니다."),
+                            byMiniMessage("구매비용 : 2 포인트")
                     ))
                     .point(2)
                     .build()
@@ -198,7 +219,7 @@ public class ShopUtil {
                     .item(Items.COMPASS)
                     .name(byMiniMessage("<red>플레이어 추적기</red>"))
                     .descriptions(List.of(
-                            byMiniMessage("네비게이터를 활성화하여 25블록 이내의 플레이어를 탐지합니다."),
+                            byMiniMessage("네비게이터를 활성화하여 50블록 이내의 플레이어를 탐지합니다."),
                             byMiniMessage("<red> 주의 ! 중복으로 구매해도 효과가 중첩되지 않습니다! </red>")
                     ))
                     .point(5)
@@ -206,7 +227,7 @@ public class ShopUtil {
                                     .getAttributeInstance(EntityAttributes.WAYPOINT_RECEIVE_RANGE))
                             .addPersistentModifier(new EntityAttributeModifier(
                                             MODIFIER_ID,
-                                            25,
+                                            50,
                                             EntityAttributeModifier.Operation.ADD_VALUE
                                     )
                             )

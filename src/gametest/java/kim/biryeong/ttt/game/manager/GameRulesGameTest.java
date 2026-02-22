@@ -2,9 +2,15 @@ package kim.biryeong.ttt.game.manager;
 
 import kim.biryeong.ttt.game.data.PlayerDataInstance;
 import kim.biryeong.ttt.player.role.Role;
+import kim.biryeong.ttt.ui.dialog.log.RoundSummaryDialog;
+import kim.biryeong.ttt.util.Sounds;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.test.TestContext;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
+import net.minecraft.world.GameMode;
+
+import java.util.List;
 
 public final class GameRulesGameTest {
     @GameTest
@@ -35,6 +41,286 @@ public final class GameRulesGameTest {
     }
 
     @GameTest
+    public void roundSummarySameTeamKillClassificationMatchesRoleTeams(TestContext context) {
+        context.assertTrue(
+                RoundSummaryDialog.isSameTeamKill(Role.INNOCENT, Role.DETECTIVE),
+                Text.literal("innocent -> detective should be classified as same-team kill")
+        );
+        context.assertTrue(
+                RoundSummaryDialog.isSameTeamKill(Role.DETECTIVE, Role.INNOCENT),
+                Text.literal("detective -> innocent should be classified as same-team kill")
+        );
+        context.assertTrue(
+                RoundSummaryDialog.isSameTeamKill(Role.TRAITOR, Role.TRAITOR),
+                Text.literal("traitor -> traitor should be classified as same-team kill")
+        );
+        context.assertFalse(
+                RoundSummaryDialog.isSameTeamKill(Role.INNOCENT, Role.TRAITOR),
+                Text.literal("innocent -> traitor should not be classified as same-team kill")
+        );
+        context.assertFalse(
+                RoundSummaryDialog.isSameTeamKill(Role.TRAITOR, Role.DETECTIVE),
+                Text.literal("traitor -> detective should not be classified as same-team kill")
+        );
+        context.assertFalse(
+                RoundSummaryDialog.isSameTeamKill(Role.SPECTATOR, Role.TRAITOR),
+                Text.literal("spectator killer should not be classified as same-team kill")
+        );
+        context.complete();
+    }
+
+    @GameTest
+    public void traitorRevealPacketRecipientsMatchAliveAndRole(TestContext context) {
+        context.assertTrue(
+                GameInstanceManager.shouldReceiveTraitorRevealPackets(true, Role.TRAITOR),
+                Text.literal("alive traitor should receive traitor reveal packets")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldReceiveTraitorRevealPackets(true, Role.INNOCENT),
+                Text.literal("alive innocent should not receive traitor reveal packets")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldReceiveTraitorRevealPackets(true, Role.DETECTIVE),
+                Text.literal("alive detective should not receive traitor reveal packets")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldReceiveTraitorRevealPackets(false, Role.TRAITOR),
+                Text.literal("dead traitor should not receive traitor reveal packets")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldReceiveTraitorRevealPackets(false, Role.INNOCENT),
+                Text.literal("dead innocent should receive traitor reveal packets")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldReceiveTraitorRevealPackets(false, Role.DETECTIVE),
+                Text.literal("dead detective should receive traitor reveal packets")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldReceiveTraitorRevealPackets(false, Role.SPECTATOR),
+                Text.literal("spectator should receive traitor reveal packets")
+        );
+        context.complete();
+    }
+
+    @GameTest
+    public void detectiveTeamPacketsAreSentOnlyInCombatPhases(TestContext context) {
+        context.assertFalse(
+                GameInstanceManager.shouldSendDetectiveTeamPackets(GameManager.Phase.NOT_STARTED),
+                Text.literal("not started should not send detective team packets")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldSendDetectiveTeamPackets(GameManager.Phase.INITIALIZE),
+                Text.literal("initialize should not send detective team packets")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldSendDetectiveTeamPackets(GameManager.Phase.POST_GAME),
+                Text.literal("warmup should not send detective team packets")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldSendDetectiveTeamPackets(GameManager.Phase.MIDDLE_GAME),
+                Text.literal("middle game should send detective team packets")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldSendDetectiveTeamPackets(GameManager.Phase.OVER_TIME),
+                Text.literal("overtime should send detective team packets")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldSendDetectiveTeamPackets(GameManager.Phase.END_GAME),
+                Text.literal("end game should not send detective team packets")
+        );
+        context.complete();
+    }
+
+    @GameTest
+    public void hiddenNameTagPacketsAreSentOnlyDuringRoundPhases(TestContext context) {
+        context.assertFalse(
+                GameInstanceManager.shouldSendHiddenNameTagTeamPackets(GameManager.Phase.NOT_STARTED),
+                Text.literal("not started should not send hidden nametag team packets")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldSendHiddenNameTagTeamPackets(GameManager.Phase.INITIALIZE),
+                Text.literal("initialize should not send hidden nametag team packets")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldSendHiddenNameTagTeamPackets(GameManager.Phase.POST_GAME),
+                Text.literal("warmup should send hidden nametag team packets")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldSendHiddenNameTagTeamPackets(GameManager.Phase.MIDDLE_GAME),
+                Text.literal("middle game should send hidden nametag team packets")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldSendHiddenNameTagTeamPackets(GameManager.Phase.OVER_TIME),
+                Text.literal("overtime should send hidden nametag team packets")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldSendHiddenNameTagTeamPackets(GameManager.Phase.END_GAME),
+                Text.literal("end game should not send hidden nametag team packets")
+        );
+        context.complete();
+    }
+
+    @GameTest
+    public void hiddenNameTagTargetsDependOnPhaseAndRole(TestContext context) {
+        context.assertTrue(
+                GameInstanceManager.shouldHidePlayerNameTag(GameManager.Phase.POST_GAME, Role.INNOCENT),
+                Text.literal("innocent nametag should be hidden")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldHidePlayerNameTag(GameManager.Phase.POST_GAME, Role.TRAITOR),
+                Text.literal("traitor nametag should be hidden")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldHidePlayerNameTag(GameManager.Phase.POST_GAME, Role.SPECTATOR),
+                Text.literal("spectator nametag should be hidden")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldHidePlayerNameTag(GameManager.Phase.POST_GAME, Role.DETECTIVE),
+                Text.literal("detective nametag should be hidden during early game")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldHidePlayerNameTag(GameManager.Phase.MIDDLE_GAME, Role.DETECTIVE),
+                Text.literal("detective nametag should be visible in middle game")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldHidePlayerNameTag(GameManager.Phase.OVER_TIME, Role.DETECTIVE),
+                Text.literal("detective nametag should stay visible in overtime")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldHidePlayerNameTag(GameManager.Phase.MIDDLE_GAME, Role.TRAITOR),
+                Text.literal("traitor nametag should stay hidden in middle game")
+        );
+        context.complete();
+    }
+
+    @GameTest
+    public void warmupCountdownSoundTriggersEverySecondForLastFiveSeconds(TestContext context) {
+        context.assertTrue(
+                GameInstanceManager.shouldPlayWarmupCountdownSound(100),
+                Text.literal("5 seconds left should trigger countdown sound")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldPlayWarmupCountdownSound(80),
+                Text.literal("4 seconds left should trigger countdown sound")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldPlayWarmupCountdownSound(60),
+                Text.literal("3 seconds left should trigger countdown sound")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldPlayWarmupCountdownSound(40),
+                Text.literal("2 seconds left should trigger countdown sound")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldPlayWarmupCountdownSound(20),
+                Text.literal("1 second left should trigger countdown sound")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldPlayWarmupCountdownSound(120),
+                Text.literal("more than 5 seconds left should not trigger countdown sound")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldPlayWarmupCountdownSound(90),
+                Text.literal("non-second boundary should not trigger countdown sound")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldPlayWarmupCountdownSound(0),
+                Text.literal("0 seconds left should not trigger countdown sound")
+        );
+
+        context.assertEquals(
+                Sounds.COUNTDOWN_5_SEC,
+                GameInstanceManager.getWarmupCountdownSound(5),
+                Text.literal("5 seconds sound is mapped")
+        );
+        context.assertEquals(
+                Sounds.COUNTDOWN_4_SEC,
+                GameInstanceManager.getWarmupCountdownSound(4),
+                Text.literal("4 seconds sound is mapped")
+        );
+        context.assertEquals(
+                Sounds.COUNTDOWN_3_SEC,
+                GameInstanceManager.getWarmupCountdownSound(3),
+                Text.literal("3 seconds sound is mapped")
+        );
+        context.assertEquals(
+                Sounds.COUNTDOWN_2_SEC,
+                GameInstanceManager.getWarmupCountdownSound(2),
+                Text.literal("2 seconds sound is mapped")
+        );
+        context.assertEquals(
+                Sounds.COUNTDOWN_1_SEC,
+                GameInstanceManager.getWarmupCountdownSound(1),
+                Text.literal("1 second sound is mapped")
+        );
+        context.assertTrue(
+                GameInstanceManager.getWarmupCountdownSound(6) == null,
+                Text.literal("out of range countdown sound is null")
+        );
+        context.complete();
+    }
+
+    @GameTest
+    public void lobbyMorningBgmSelectionMatchesIndexAndPhase(TestContext context) {
+        context.assertTrue(
+                GameManager.shouldTickLobbyBgm(GameManager.Phase.NOT_STARTED),
+                Text.literal("not started should tick lobby bgm")
+        );
+        context.assertFalse(
+                GameManager.shouldTickLobbyBgm(GameManager.Phase.INITIALIZE),
+                Text.literal("initialize should not tick lobby bgm")
+        );
+        context.assertFalse(
+                GameManager.shouldTickLobbyBgm(GameManager.Phase.POST_GAME),
+                Text.literal("warmup should not tick lobby bgm")
+        );
+        context.assertTrue(
+                GameManager.shouldTickLobbyBgm(GameManager.Phase.MIDDLE_GAME),
+                Text.literal("middle game should tick lobby bgm")
+        );
+
+        context.assertEquals(
+                Sounds.MORNING_BGM_1,
+                GameManager.selectLobbyMorningBgm(0),
+                Text.literal("index 0 maps to morning bgm 1")
+        );
+        context.assertEquals(
+                Sounds.MORNING_BGM_5,
+                GameManager.selectLobbyMorningBgm(4),
+                Text.literal("index 4 maps to morning bgm 5")
+        );
+        context.assertEquals(
+                Sounds.BGM_1,
+                GameManager.selectLobbyMorningBgm(5),
+                Text.literal("index 5 maps to bgm 1")
+        );
+        context.assertEquals(
+                Sounds.BGM_2,
+                GameManager.selectLobbyMorningBgm(6),
+                Text.literal("index 6 maps to bgm 2")
+        );
+        context.assertEquals(
+                Sounds.BGM_3,
+                GameManager.selectLobbyMorningBgm(-1),
+                Text.literal("negative index wraps to bgm 3")
+        );
+        context.assertEquals(
+                Sounds.MORNING_BGM_1,
+                GameManager.selectLobbyMorningBgm(8),
+                Text.literal("index overflow wraps to morning bgm 1")
+        );
+        context.assertTrue(
+                GameManager.shouldPlayLobbyBgmForPlayer(true),
+                Text.literal("bgm-enabled player should receive lobby bgm")
+        );
+        context.assertFalse(
+                GameManager.shouldPlayLobbyBgmForPlayer(false),
+                Text.literal("bgm-disabled player should not receive lobby bgm")
+        );
+        context.complete();
+    }
+
+    @GameTest
     public void roundResultMappingMatchesRoleTeams(TestContext context) {
         context.assertEquals(
                 PlayerDataInstance.Result.WIN,
@@ -60,6 +346,41 @@ public final class GameRulesGameTest {
                 PlayerDataInstance.Result.WIN,
                 PlayerDataInstance.Result.WIN.getByRole(Role.SPECTATOR),
                 Text.literal("spectator result remains unchanged")
+        );
+        context.complete();
+    }
+
+    @GameTest
+    public void roleRevealMessagesMatchRoleObjectives(TestContext context) {
+        context.assertEquals(
+                "당신은 <green>시민</green> 입니다",
+                GameManager.resolveRoleRevealTitle(Role.INNOCENT),
+                Text.literal("innocent title should match reveal format")
+        );
+        context.assertEquals(
+                "당신은 <red>트레이터</red> 입니다",
+                GameManager.resolveRoleRevealTitle(Role.TRAITOR),
+                Text.literal("traitor title should match reveal format")
+        );
+        context.assertEquals(
+                "당신은 <blue>탐정</blue> 입니다",
+                GameManager.resolveRoleRevealTitle(Role.DETECTIVE),
+                Text.literal("detective title should match reveal format")
+        );
+        context.assertEquals(
+                "모든 <red>트레이터</red>를 처치하세요!",
+                GameManager.resolveRoleRevealObjective(Role.INNOCENT),
+                Text.literal("innocent objective should match reveal subtitle")
+        );
+        context.assertEquals(
+                "모든 <green>시민팀</green>을 처치하세요!",
+                GameManager.resolveRoleRevealObjective(Role.TRAITOR),
+                Text.literal("traitor objective should match reveal subtitle")
+        );
+        context.assertEquals(
+                "정보를 취합하여 모든 <red>트레이터</red>를 처치하세요!",
+                GameManager.resolveRoleRevealObjective(Role.DETECTIVE),
+                Text.literal("detective objective should match reveal subtitle")
         );
         context.complete();
     }
@@ -126,6 +447,29 @@ public final class GameRulesGameTest {
     }
 
     @GameTest
+    public void roundParticipationAndStartGameModeFollowSpectatorOptIn(TestContext context) {
+        context.assertTrue(
+                GameManager.shouldParticipateInRound(false),
+                Text.literal("players without spectator opt-in should participate")
+        );
+        context.assertFalse(
+                GameManager.shouldParticipateInRound(true),
+                Text.literal("players with spectator opt-in should not participate")
+        );
+        context.assertEquals(
+                GameMode.ADVENTURE,
+                GameManager.resolveRoundStartGameMode(false),
+                Text.literal("non-spectator players should start in adventure mode")
+        );
+        context.assertEquals(
+                GameMode.SPECTATOR,
+                GameManager.resolveRoundStartGameMode(true),
+                Text.literal("spectator opt-in players should start in spectator mode")
+        );
+        context.complete();
+    }
+
+    @GameTest
     public void combatAvailabilityMatchesRoundState(TestContext context) {
         context.assertFalse(
                 GameManager.Phase.NOT_STARTED.canShowRole(),
@@ -150,6 +494,37 @@ public final class GameRulesGameTest {
         context.assertFalse(
                 GameManager.Phase.END_GAME.canShowRole(),
                 Text.literal("end game phase should not allow combat")
+        );
+        context.complete();
+    }
+
+    @GameTest
+    public void roundMapIdsIncludeScannedTemplates(TestContext context) {
+        GameManager manager = GameManager.getInstance();
+        List<Identifier> mapIds = manager.getAllMapIds();
+
+        context.assertTrue(
+                mapIds.contains(Identifier.of("ttt", "kitchen")),
+                Text.literal("kitchen map should be registered")
+        );
+        context.assertTrue(
+                mapIds.contains(Identifier.of("ttt", "office_test")),
+                Text.literal("office_test map should be discovered from map_template scan")
+        );
+        context.assertTrue(
+                mapIds.contains(Identifier.of("ttt", "inferno")),
+                Text.literal("inferno map should be discovered from map_template scan")
+        );
+        context.assertFalse(
+                mapIds.contains(Identifier.of("ttt", "lobby")),
+                Text.literal("lobby should not be registered as a round map")
+        );
+
+        long uniqueCount = mapIds.stream().distinct().count();
+        context.assertEquals(
+                (int) uniqueCount,
+                mapIds.size(),
+                Text.literal("round map ids should not contain duplicates")
         );
         context.complete();
     }

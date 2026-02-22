@@ -6,12 +6,14 @@ import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.item.ModItems;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
+import kim.biryeong.ttt.ui.dialog.log.DeathCombatLogDialog;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.scoreboard.number.BlankNumberFormat;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 
 import java.util.Set;
+import java.util.UUID;
 
 public class CorpseSidebar extends Sidebar {
     private final String userName;
@@ -19,12 +21,14 @@ public class CorpseSidebar extends Sidebar {
     private final Role userRole;
     private final ServerPlayerEntity user;
     private final DamageSource source;
+    private final UUID uuid;
 
     public CorpseSidebar(CorpseEntity corpse, ServerPlayerEntity user) {
         super(Priority.HIGH);
         this.userName = corpse.getGameProfile().getName();
         this.role = corpse.getRole();
         this.source = corpse.getDamageSource();
+        this.uuid = corpse.getUuid();
         this.user = user;
         this.userRole = ((InGamePlayerInfoProvider) user).tts$getRole();
         this.initialize();
@@ -32,6 +36,7 @@ public class CorpseSidebar extends Sidebar {
 
     private void initialize() {
         this.setTitle(GameManager.byMiniMessage("%s님의 시체 정보".formatted(this.userName)));
+        this.addLines(DeathCombatLogDialog.resolveSmallAvatar(this.uuid, userName, false));
         this.addLines(GameManager.byMiniMessage(
                 "직업: <#color>%s</#color>"
                         .formatted(this.role.krRoleName)

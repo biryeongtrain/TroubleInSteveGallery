@@ -18,10 +18,14 @@ public interface InGamePlayerInfoProvider {
     int tts$getPoints();
     void tts$setRole(Role role);
     void tts$setDenyToPlay(boolean denyToPlay);
+    void tts$setTipsEnabled(boolean enabled);
+    void tts$setBgmEnabled(boolean enabled);
     void tts$addPoints(int points, PointReason reason);
     void tts$clearPoints();
     boolean tts$isAlive();
     boolean tts$denyToPlay();
+    boolean tts$tipsEnabled();
+    boolean tts$bgmEnabled();
     void tts$clearSidebarTime();
     ItemLoadout tts$getItemLoadout();
 

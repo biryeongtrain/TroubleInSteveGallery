@@ -31,7 +31,10 @@ public class ShopGUI extends SimpleGui {
                 int playerPoints = provider.tts$getPoints();
                 if (playerPoints >= shopElement.point()) {
                     provider.tts$addPoints(-shopElement.point(), InGamePlayerInfoProvider.PointReason.ROLE_PLAYING);
-                    shopElement.handler().accept(shopElement.item(), this.player);
+                    try {
+                        shopElement.handler().accept(shopElement.item(), this.player);
+                    } catch (Exception ignored) {
+                    }
                     this.close();
                 } else {
                     this.player.sendMessage(GameManager.byMiniMessage("<red>포인트가 부족합니다!</red>"), false);

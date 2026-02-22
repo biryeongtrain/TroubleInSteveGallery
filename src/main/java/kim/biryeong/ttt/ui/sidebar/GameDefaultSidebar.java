@@ -5,9 +5,9 @@ import eu.pb4.sidebars.api.lines.SimpleSidebarLine;
 import eu.pb4.sidebars.api.lines.SuppliedSidebarLine;
 import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
-import kim.biryeong.ttt.player.role.Role;
 import net.minecraft.scoreboard.number.BlankNumberFormat;
 import net.minecraft.text.Text;
+import net.minecraft.world.GameMode;
 
 public class GameDefaultSidebar extends Sidebar {
     public GameDefaultSidebar() {
@@ -29,29 +29,6 @@ public class GameDefaultSidebar extends Sidebar {
 
             return GameManager.byMiniMessage(("게임 단계 : <color>" + phaseString + "</color>").replace("color", color));
         }), (players) -> BlankNumberFormat.INSTANCE));
-        this.addLines(new SuppliedSidebarLine(0, (player) -> {
-            InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
-            GameManager.Phase phase = GameManager.getInstance().getCurrentPhase();
-            int time = GameManager.getInstance().getLeftTicks();
-            StringBuilder builder = new StringBuilder();
-            builder.append("남은 시간 : ");
-
-            if (time == Integer.MIN_VALUE) {
-                return Text.empty();
-            }
-
-            if (phase == GameManager.Phase.OVER_TIME) {
-                if (info.tts$getRole() == Role.TRAITOR) {
-                    builder.append("<red>%s초</red>".formatted(String.valueOf(time / 20)));
-                } else {
-                    builder.append("<red>연장 시간</red>");
-                }
-            } else {
-                builder.append("<green>%s초</green>".formatted(String.valueOf(time / 20)));
-            }
-
-            return GameManager.byMiniMessage(builder.toString());
-        }, (p) -> BlankNumberFormat.INSTANCE));
 
         this.addLines(new SimpleSidebarLine(0, Text.empty(), BlankNumberFormat.INSTANCE));
         this.addLines(new SuppliedSidebarLine(0, (player) -> {
@@ -64,9 +41,33 @@ public class GameDefaultSidebar extends Sidebar {
             return GameManager.byMiniMessage(str);
         }, (players) -> BlankNumberFormat.INSTANCE));
         this.addLines(new SuppliedSidebarLine(0, (player) -> {
+            GameManager manager = GameManager.getInstance();
+            GameManager.Phase phase = manager.getCurrentPhase();
+            if (!phase.canShowRole()) {
+                return Text.empty();
+            }
+
+            InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
+            String value = switch (info.tts$getRole()) {
+                case TRAITOR, SPECTATOR -> manager.getAliveParticipantCount() + "명";
+                case INNOCENT, DETECTIVE -> "알 수 없음";
+            };
+            String color = switch (info.tts$getRole()) {
+                case TRAITOR, SPECTATOR -> "yellow";
+                case INNOCENT, DETECTIVE -> "gray";
+            };
+            if (player.getGameMode() == GameMode.SPECTATOR) {
+                value = manager.getAliveParticipantCount() + "명";
+                color = "yellow";
+            }
+            return GameManager.byMiniMessage(("남은 인원 : <color>" + value + "</color>").replace("color", color));
+        }, (players) -> BlankNumberFormat.INSTANCE));
+        this.addLines(new SuppliedSidebarLine(0, (player) -> {
             InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
             return GameManager.byMiniMessage("포인트 : <yellow>%d</yellow>".formatted(info.tts$getPoints()));
         }, (players) -> BlankNumberFormat.INSTANCE));
+        this.addLines(new SimpleSidebarLine(0, Text.empty(), BlankNumberFormat.INSTANCE));
+
         this.setDefaultNumberFormat(BlankNumberFormat.INSTANCE);
         this.show();
     }

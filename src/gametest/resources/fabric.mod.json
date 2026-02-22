@@ -7,8 +7,12 @@
   "entrypoints": {
     "fabric-gametest": [
       "kim.biryeong.ttt.game.manager.GameRulesGameTest",
+      "kim.biryeong.ttt.game.manager.RoundTimerBossBarManagerGameTest",
       "kim.biryeong.ttt.EventsGameTest",
-      "kim.biryeong.ttt.ui.sidebar.CorpseSidebarGameTest"
+      "kim.biryeong.ttt.command.CommandInitializerGameTest",
+      "kim.biryeong.ttt.ui.sidebar.CorpseSidebarGameTest",
+      "kim.biryeong.ttt.ui.dialog.guide.GuideDialogDataLoaderGameTest",
+      "kim.biryeong.ttt.ui.dialog.guide.GuideTraitorDialogGameTest"
     ]
   },
   "depends": {

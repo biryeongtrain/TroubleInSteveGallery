@@ -12,11 +12,14 @@ import eu.pb4.polymer.virtualentity.api.elements.*;
 import eu.pb4.polymer.virtualentity.mixin.accessors.EntityAccessor;
 import eu.pb4.sidebars.api.SidebarInterface;
 import eu.pb4.sidebars.impl.SidebarHolder;
+import kim.biryeong.ttt.TroubleInTerroristTownMod;
 import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.item.ModItems;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
+import kim.biryeong.ttt.ui.dialog.log.DeathCombatLogDialog;
 import kim.biryeong.ttt.ui.sidebar.CorpseSidebar;
+import net.kyori.adventure.platform.modcommon.impl.WrappedComponent;
 import net.minecraft.entity.*;
 import net.minecraft.entity.attribute.DefaultAttributeContainer;
 import net.minecraft.entity.attribute.EntityAttributes;
@@ -25,7 +28,12 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Items;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.text.MutableText;
+import net.minecraft.text.Style;
+import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
@@ -33,6 +41,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 import java.util.Set;
+
+import static kim.biryeong.ttt.game.manager.GameManager.byMiniMessage;
 
 @SuppressWarnings("unused")
 public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEntity, Leashable {
@@ -108,7 +118,12 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
             this.setFireTicks(1000);
             this.isBurning = true;
             this.hitboxInteraction.getDataTracker().set(FLAGS, (byte) (1 << EntityAccessor.getON_FIRE_FLAG_INDEX()));
+            player.getMainHandStack().decrement(1);
             return result;
+        }
+
+        if (player.getMainHandStack().getItem() == Items.LEAD) {
+            return ActionResult.PASS;
         }
 
         // TODO SGUI Execute
@@ -119,7 +134,7 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
                 playerRole = ((InGamePlayerInfoProvider) deadPlayer).tts$getRole();
             }
             this.hitboxInteraction.setCustomName(
-                    GameManager.byMiniMessage(
+                    byMiniMessage(
                             "<#color>%s's Corpse</#color>"
                                     .formatted(this.gameProfile.getName())
                                     .replace("color", playerRole.hexColor)
@@ -128,14 +143,23 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
             this.hitboxInteraction.setCustomNameVisible(true);
             this.isRevealed = true;
 
-            GameManager.getInstance().sendMessage("%s 님이 %s 님의 시체를 찾았습니다. 그는 <#color>%s</#color> 였습니다."
-                    .formatted(player.getGameProfile().getName(), this.gameProfile.getName(), playerRole.krRoleName)
-                    .replace("color", playerRole.hexColor)
+
+            serverPlayer.getServer().getPlayerManager().broadcast(Text.literal("\n[사망 알림!] ").styled(style -> style.withColor(Formatting.YELLOW))
+                    .append(DeathCombatLogDialog.resolveSmallAvatar(serverPlayer.getUuid(), serverPlayer.getNameForScoreboard(), false))
+                    .append(byMiniMessage(" <yellow>%s</yellow><white>님이 ".formatted(serverPlayer.getNameForScoreboard())))
+                    .append(DeathCombatLogDialog.resolveSmallAvatar(deadPlayer.getUuid(), deadPlayer.getNameForScoreboard(), false))
+                    .append(byMiniMessage(" <red>%s</red><white>님의 시체를 찾았습니다.".formatted(deadPlayer.getNameForScoreboard())))
+                    .append(byMiniMessage(" 그는 <#color>%s</#color><white> 이었습니다.\n"
+                            .formatted(playerRole.krRoleName)
+                            .replace("color", playerRole.hexColor))
+                    ), false
             );
 
-            player.sendMessage(GameManager.byMiniMessage("사망한 시체 첫 조사를 통해 <green>2 포인트</green> 획득!"), false);
+            player.sendMessage(byMiniMessage("<yellow>[알림]</yellow> 사망한 시체 첫 조사를 통해 <green>2 포인트</green> 획득!"), false);
             InGamePlayerInfoProvider provider = (InGamePlayerInfoProvider) player;
             provider.tts$addPoints(2, InGamePlayerInfoProvider.PointReason.ROLE_PLAYING);
+            GameManager.getInstance().onFirstCorpseDiscovered();
+            TroubleInTerroristTownMod.LOGGER.info("{}이 {} 시체 발견. 직업 : {}", serverPlayer.getNameForScoreboard(), this.gameProfile.getName(), playerRole.krRoleName);
         }
 
         this.tryAnnounceKillerDiscovery(serverPlayer);
@@ -156,6 +180,9 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
 
     private void tryAnnounceKillerDiscovery(ServerPlayerEntity investigator) {
         if (this.killerDiscoveryAnnounced) {
+            return;
+        }
+        if (!GameManager.getInstance().isAlive(investigator)) {
             return;
         }
 
@@ -214,7 +241,8 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
                             (frame) -> {
                                 if (frame == 60) this.holder.getAnimator().pauseAnimation("death_damage2");
                             },
-                            (player) -> {}
+                            (player) -> {
+                            }
                     );
             this.animationPlayed = true;
         }

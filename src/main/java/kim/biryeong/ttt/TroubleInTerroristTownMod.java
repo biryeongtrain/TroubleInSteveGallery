@@ -8,12 +8,20 @@ import kim.biryeong.ttt.entity.TTTEntityType;
 import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.item.ModComponents;
 import kim.biryeong.ttt.item.ModItems;
+import kim.biryeong.ttt.resourcepack.ImageHandler;
+import kim.biryeong.ttt.ui.dialog.body.AlignedItemBody;
+import kim.biryeong.ttt.ui.dialog.TTTDialogs;
+import kim.biryeong.ttt.ui.dialog.body.AlignedMessage;
+import kim.biryeong.ttt.ui.dialog.body.HeaderMessage;
+import kim.biryeong.ttt.ui.dialog.body.ImageBody;
 import kim.biryeong.ttt.ui.sidebar.GameDefaultSidebar;
 import kim.biryeong.ttt.util.Sounds;
 import net.fabricmc.api.ModInitializer;
 
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.Registry;
 import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,8 +51,14 @@ public class TroubleInTerroristTownMod implements ModInitializer {
 		ModComponents.initialize();
 		Config.initialize();
 		Sounds.initialize();
+		TTTDialogs.initialize();
+		ImageHandler.init();
 		LOGGER.info("Hello Fabric world!");
 
+		Registry.register(Registries.DIALOG_BODY_TYPE, Identifier.of("ttt", "aligned_message"), AlignedMessage.MAP_CODEC);
+		Registry.register(Registries.DIALOG_BODY_TYPE, Identifier.of("ttt", "aligned_item"), AlignedItemBody.MAP_CODEC);
+		Registry.register(Registries.DIALOG_BODY_TYPE, Identifier.of("ttt", "header_message"), HeaderMessage.MAP_CODEC);
+		Registry.register(Registries.DIALOG_BODY_TYPE, Identifier.of("ttt", "image"), ImageBody.MAP_CODEC);
 		ServerLifecycleEvents.SERVER_STARTING.register(GameManager::setServer);
 
 		CommandRegistrationCallback.EVENT.register((commandDispatcher, commandRegistryAccess, registrationEnvironment) -> CommandInitializer.registerCommands(commandDispatcher));

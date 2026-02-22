@@ -6,6 +6,7 @@ import kim.biryeong.ttt.player.duck.InGameEventProvider;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.ui.gui.ShopGUI;
+import kim.biryeong.ttt.util.KoreanKeyboardConverter;
 import kim.biryeong.ttt.util.NonThrowable;
 import kim.biryeong.ttt.util.Scheduler;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -14,8 +15,6 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.damage.DamageTypes;
 import net.minecraft.entity.passive.PassiveEntity;
-import net.minecraft.network.message.SentMessage;
-import net.minecraft.network.message.SignedMessage;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -133,49 +132,71 @@ public final class Events {
 
         Stimuli.global().listen(PlayerChatEvent.EVENT, (player, message, messageType) -> {
             GameManager manager = GameManager.getInstance();
-            if (!shouldRouteToSpectatorChat(manager.getCurrentPhase(), manager.isAlive(player))) {
-                return EventResult.PASS;
-            }
-
+            GameManager.Phase phase = manager.getCurrentPhase();
+            InGamePlayerInfoProvider senderInfo = (InGamePlayerInfoProvider) player;
+            boolean senderAlive = manager.isAlive(player);
+            Role senderRole = senderInfo.tts$getRole();
             var server = player.getServer();
             if (server == null) {
                 return EventResult.DENY;
             }
 
-            SignedMessage spectatorChatMessage = buildSpectatorChatMessage(message);
-            SentMessage sentMessage = SentMessage.of(spectatorChatMessage);
-            for (ServerPlayerEntity candidate : server.getPlayerManager().getPlayerList()) {
-                InGamePlayerInfoProvider candidateInfo = (InGamePlayerInfoProvider) candidate;
-                if (canReceiveSpectatorChat(manager.isAlive(candidate), candidateInfo.tts$getRole())) {
-                    candidate.sendChatMessage(
-                            sentMessage,
-                            player.shouldFilterMessagesSentTo(candidate),
-                            messageType
-                    );
+            if (shouldRouteToSpectatorChat(phase, senderAlive)) {
+                Text spectatorChatText = buildSpectatorChatText(
+                        player.getDisplayName(),
+                        convertInGameChannelChatContent(message.getContent())
+                );
+                for (ServerPlayerEntity candidate : server.getPlayerManager().getPlayerList()) {
+                    InGamePlayerInfoProvider candidateInfo = (InGamePlayerInfoProvider) candidate;
+                    if (canReceiveSpectatorChat(manager.isAlive(candidate), candidateInfo.tts$getRole())) {
+                        candidate.sendMessage(spectatorChatText.copy(), false);
+                    }
                 }
+                return EventResult.DENY;
             }
-            return EventResult.DENY;
+
+            if (shouldRouteToDetectiveBlueNameChat(phase, senderAlive, senderRole)) {
+                Text detectiveChatText = buildDetectiveBlueNameChatText(
+                        player.getDisplayName(),
+                        convertInGameChannelChatContent(message.getContent())
+                );
+                server.getPlayerManager().broadcast(detectiveChatText, false);
+                return EventResult.DENY;
+            }
+
+            return EventResult.PASS;
         });
     }
 
     private static void registerServerLifecycleEvents() {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
-            if (GameManager.getInstance().getCurrentPhase().isInProgress()) {
-                GameManager.getInstance().tick();
+            GameManager manager = GameManager.getInstance();
+            manager.tickLobbyBgm();
+            manager.tickGuideHints();
+            if (manager.getCurrentPhase().isInProgress()) {
+                manager.tick();
             }
+            manager.tickRoundTimerBossBar();
         });
 
         ServerLifecycleEvents.SERVER_STARTED.register(server ->
                 GameManager.getInstance().getSpawnWorld()
         );
+
+        ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
+            GameManager manager = GameManager.getInstance();
+            manager.reloadMapData(manager.getAllMapIds());
+        });
     }
 
     private static void registerUiEvents() {
         Stimuli.global().listen(PlayerSwapWithOffhandEvent.EVENT, player -> {
-            if (!GameManager.getInstance().getCurrentPhase().canShowRole()) {
+            GameManager manager = GameManager.getInstance();
+            if (!manager.getCurrentPhase().canShowRole()) {
                 return EventResult.PASS;
             }
 
+            manager.onShopOpened(player);
             ShopGUI gui = new ShopGUI(player);
             gui.open();
             return EventResult.DENY;
@@ -194,10 +215,26 @@ public final class Events {
         return !candidateAlive || candidateRole == Role.SPECTATOR;
     }
 
-    private static SignedMessage buildSpectatorChatMessage(SignedMessage message) {
-        Text prefixedContent = Text.empty()
+    static Text buildSpectatorChatText(Text senderName, Text messageContent) {
+        return Text.empty()
                 .append(Text.literal("[관전자] ").formatted(Formatting.GRAY))
-                .append(message.getContent().copy().formatted(Formatting.GRAY));
-        return message.withUnsignedContent(prefixedContent);
+                .append(senderName.copy().formatted(Formatting.GRAY))
+                .append(Text.literal(": ").formatted(Formatting.GRAY))
+                .append(messageContent.copy().formatted(Formatting.GRAY));
+    }
+
+    static boolean shouldRouteToDetectiveBlueNameChat(GameManager.Phase phase, boolean senderAlive, Role senderRole) {
+        return phase.canShowRole() && senderAlive && senderRole == Role.DETECTIVE;
+    }
+
+    static Text buildDetectiveBlueNameChatText(Text senderName, Text messageContent) {
+        return Text.empty()
+                .append(senderName.copy().formatted(Formatting.BLUE))
+                .append(Text.literal(": "))
+                .append(messageContent.copy());
+    }
+
+    static Text convertInGameChannelChatContent(Text messageContent) {
+        return Text.literal(KoreanKeyboardConverter.convertChat(messageContent.getString()));
     }
 }

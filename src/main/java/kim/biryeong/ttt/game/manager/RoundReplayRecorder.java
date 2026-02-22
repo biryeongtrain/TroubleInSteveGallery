@@ -1,101 +1,102 @@
 package kim.biryeong.ttt.game.manager;
 
-import kim.biryeong.ttt.util.DebugFakePlayerRegistry;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import xyz.nucleoid.map_templates.BlockBounds;
 
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 
 final class RoundReplayRecorder {
     private static final Logger LOGGER = LoggerFactory.getLogger(RoundReplayRecorder.class);
     private static final String SERVER_REPLAY_MOD_ID = "server-replay";
 
-    private final Set<UUID> recordingPlayers = new HashSet<>();
+    private final Set<String> chunkRecorderNames = new HashSet<>();
     private boolean missingDependencyLogged = false;
 
-    void startRoundRecordings(MinecraftServer server, Collection<ServerPlayerEntity> players) {
+    void startRoundChunkRecording(
+            MinecraftServer server,
+            ServerWorld world,
+            BlockBounds mapBounds,
+            Identifier mapId
+    ) {
         if (!isAvailable()) {
             return;
         }
-
-        for (ServerPlayerEntity player : players) {
-            UUID uuid = player.getUuid();
-            if (this.recordingPlayers.contains(uuid)) {
-                continue;
-            }
-            if (DebugFakePlayerRegistry.contains(uuid)) {
-                continue;
-            }
-
-            String playerName = player.getGameProfile().getName();
-            boolean started = execute(server, "replay start players " + playerName);
-            if (!started) {
-                LOGGER.warn("Failed to start replay recording for player {} ({})", playerName, uuid);
-                continue;
-            }
-
-            this.recordingPlayers.add(uuid);
+        if (world == null || mapBounds == null) {
+            LOGGER.warn("Cannot start chunk replay recording: world or map bounds are null.");
+            return;
         }
+
+        BlockPos min = mapBounds.min();
+        BlockPos max = mapBounds.max();
+        int fromX = Math.floorDiv(min.getX(), 16);
+        int fromZ = Math.floorDiv(min.getZ(), 16);
+        int toX = Math.floorDiv(max.getX(), 16);
+        int toZ = Math.floorDiv(max.getZ(), 16);
+
+        String recorderName = buildChunkRecorderName(mapId);
+        String command = "replay start chunks from %d %d to %d %d in %s named %s".formatted(
+                fromX,
+                fromZ,
+                toX,
+                toZ,
+                world.getRegistryKey().getValue(),
+                recorderName
+        );
+        boolean started = execute(server, command);
+        if (!started) {
+            LOGGER.warn(
+                    "Failed to start chunk replay recording for map {} in dimension {} (chunks: {} {} -> {} {}).",
+                    mapId,
+                    world.getRegistryKey().getValue(),
+                    fromX,
+                    fromZ,
+                    toX,
+                    toZ
+            );
+            return;
+        }
+
+        this.chunkRecorderNames.add(recorderName);
+        LOGGER.info(
+                "Started chunk replay recording '{}' for map {} in dimension {} (chunks: {} {} -> {} {}).",
+                recorderName,
+                mapId,
+                world.getRegistryKey().getValue(),
+                fromX,
+                fromZ,
+                toX,
+                toZ
+        );
     }
 
     void stopRoundRecordings(MinecraftServer server, boolean save) {
         if (!isAvailable()) {
-            this.recordingPlayers.clear();
+            this.chunkRecorderNames.clear();
             return;
         }
 
-        for (UUID uuid : Set.copyOf(this.recordingPlayers)) {
-            ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);
-            if (player == null) {
-                continue;
-            }
-
-            String playerName = player.getGameProfile().getName();
-            boolean stopped = execute(server, "replay stop players " + playerName + " " + save);
+        for (String recorderName : Set.copyOf(this.chunkRecorderNames)) {
+            boolean stopped = execute(server, "replay stop chunks named " + recorderName + " " + save);
             if (!stopped) {
-                LOGGER.warn("Failed to stop replay recording for player {} ({})", playerName, uuid);
+                LOGGER.warn("Failed to stop chunk replay recording '{}'.", recorderName);
                 continue;
             }
 
-            this.recordingPlayers.remove(uuid);
+            this.chunkRecorderNames.remove(recorderName);
         }
 
-        this.recordingPlayers.clear();
-    }
-
-    void stopPlayerRecording(MinecraftServer server, ServerPlayerEntity player, boolean save) {
-        UUID uuid = player.getUuid();
-        if (!this.recordingPlayers.contains(uuid)) {
-            return;
-        }
-        if (!isAvailable()) {
-            this.recordingPlayers.remove(uuid);
-            return;
-        }
-
-        ServerPlayerEntity onlinePlayer = server.getPlayerManager().getPlayer(uuid);
-        if (onlinePlayer == null) {
-            this.recordingPlayers.remove(uuid);
-            return;
-        }
-
-        String playerName = onlinePlayer.getGameProfile().getName();
-        boolean stopped = execute(server, "replay stop players " + playerName + " " + save);
-        if (!stopped) {
-            LOGGER.warn("Failed to stop replay recording for player {} ({}) on leave", playerName, uuid);
-        }
-
-        this.recordingPlayers.remove(uuid);
+        this.chunkRecorderNames.clear();
     }
 
     void clear() {
-        this.recordingPlayers.clear();
+        this.chunkRecorderNames.clear();
     }
 
     private boolean isAvailable() {
@@ -114,5 +115,12 @@ final class RoundReplayRecorder {
             LOGGER.error("Error while executing replay command: {}", command, exception);
             return false;
         }
+    }
+
+    private static String buildChunkRecorderName(Identifier mapId) {
+        return "ttt_round_%s_%d".formatted(
+                mapId.toString().replace(':', '_').replace('/', '_'),
+                System.currentTimeMillis()
+        );
     }
 }

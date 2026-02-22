@@ -6,23 +6,38 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import kim.biryeong.ttt.TroubleInTerroristTownMod;
 import kim.biryeong.ttt.config.Config;
 import kim.biryeong.ttt.game.data.PlayerDataInstance;
+import kim.biryeong.ttt.game.data.PlayerRoundDataInstance;
 import kim.biryeong.ttt.item.ModItems;
 import kim.biryeong.ttt.player.duck.InGameEventProvider;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
+import kim.biryeong.ttt.ui.dialog.log.DeathCombatLogDialog;
+import kim.biryeong.ttt.ui.dialog.log.RoundSummaryDialog;
 import kim.biryeong.ttt.ui.sidebar.GameDefaultSidebar;
+import kim.biryeong.ttt.util.Scheduler;
 import kim.biryeong.ttt.util.ShopUtil;
+import kim.biryeong.ttt.util.Sounds;
 import kim.biryeong.ttt.world.TTTMap;
 import net.kyori.adventure.platform.modcommon.MinecraftAudiences;
 import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.minecraft.entity.Leashable;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.network.packet.s2c.play.BundleS2CPacket;
+import net.minecraft.network.packet.s2c.play.SubtitleS2CPacket;
+import net.minecraft.network.packet.s2c.play.TitleFadeS2CPacket;
+import net.minecraft.network.packet.s2c.play.TitleS2CPacket;
+import net.minecraft.resource.Resource;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvent;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.random.RandomSeed;
@@ -39,8 +54,12 @@ import xyz.nucleoid.map_templates.MapTemplateSerializer;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -49,9 +68,34 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class GameManager {
     private static final Identifier LOBBY_MAP_ID = Identifier.of("ttt:lobby");
     private static final Identifier DEFAULT_GAME_MAP_ID = Identifier.of("ttt:kitchen");
-    private static final int ROUND_WIN_POINTS = 10;
-    private static final int ROUND_NON_WIN_POINTS = 5;
+    private static final String MAP_TEMPLATE_RESOURCE_PATH = "map_template";
+    private static final String MAP_TEMPLATE_EXTENSION = ".nbt";
+    private static final int ROUND_WIN_POINTS = 5;
+    private static final int ROUND_NON_WIN_POINTS = 3;
     private static final int LEAVE_DURING_ROUND_POINTS = 0;
+    private static final int LOBBY_BGM_INTERVAL_TICKS = 3600;
+    private static final int ROUND_START_BGM_DELAY_TICKS = 40;
+    private static final int GUIDE_TIP_INTERVAL_TICKS = 600;
+    private static final int DEATH_COMBAT_LOG_DELAY_TICKS = 30;
+    private static final int ROLE_REVEAL_TITLE_FADE_IN_TICKS = 10;
+    private static final int ROLE_REVEAL_TITLE_STAY_TICKS = 40;
+    private static final int ROLE_REVEAL_TITLE_FADE_OUT_TICKS = 10;
+    private static final String FIRST_JOIN_WELCOME_LINE_1 =
+            "<red>T</red><green>T</green><blue>T</blue> "
+                    + "(<red>Trouble</red> <green>In</green> <blue>Terrorist Town</blue>) "
+                    + "<yellow>에 오신 것을 환영합니다.";
+    private static final String FIRST_JOIN_WELCOME_LINE_2 =
+            "<yellow>처음 플레이하는 유저는 <green>G <yellow>키를 눌러 가이드를 읽어주세요.";
+    private static final List<SoundEvent> LOBBY_MORNING_BGM = List.of(
+            Sounds.MORNING_BGM_1,
+            Sounds.MORNING_BGM_2,
+            Sounds.MORNING_BGM_3,
+            Sounds.MORNING_BGM_4,
+            Sounds.MORNING_BGM_5,
+            Sounds.BGM_1,
+            Sounds.BGM_2,
+            Sounds.BGM_3
+    );
 
     private static GameManager instance;
 
@@ -60,6 +104,8 @@ public final class GameManager {
     private final AtomicReference<Xoroshiro128PlusPlusRandom> rand =
             new AtomicReference<>(new Xoroshiro128PlusPlusRandom(RandomSeed.getSeed()));
     private final Object2IntOpenHashMap<UUID> playerPoints = new Object2IntOpenHashMap<>();
+    private final Set<UUID> shopGuidePlayers = new HashSet<>();
+    private final RoundTimerBossBarManager roundTimerBossBarManager = new RoundTimerBossBarManager();
 
     final GameDataManager gameDataManager = new GameDataManager(this);
     final GameInstanceManager gameInstanceManager = new GameInstanceManager();
@@ -67,16 +113,21 @@ public final class GameManager {
     final Map<Identifier, MapTemplate> templates = new Object2ObjectOpenHashMap<>();
 
     static MinecraftServer server;
-    static final Logger LOGGER = LoggerFactory.getLogger("TTS_GameManager");
+    static final Logger LOGGER = LoggerFactory.getLogger("TTT_GameManager");
     static MinecraftAudiences ADVENTURE;
 
     public static GameDefaultSidebar DEFAULT_SIDEBAR;
     boolean debugMode = false;
     TTTMap currentMap;
     TTTMap spawnMap;
+    private boolean roundReplayEnabled = true;
+    private boolean firstCorpseGuideShown = false;
+    private boolean overtimeGuideShown = false;
+    private int rotatingGuideIndex = 0;
+    private int lobbyBgmCooldownTicks = LOBBY_BGM_INTERVAL_TICKS;
 
     private GameManager() {
-        this.executor.named("TTS Game Manager");
+        this.executor.named("TTT Game Manager");
     }
 
     public static GameManager getInstance() {
@@ -132,26 +183,38 @@ public final class GameManager {
     }
 
     public void startGame(boolean resetPoint) {
+        this.startGame(resetPoint, null, true);
+    }
+
+    public void startGame(boolean resetPoint, @Nullable Identifier mapId) {
+        this.startGame(resetPoint, mapId, true);
+    }
+
+    public void startGame(boolean resetPoint, @Nullable Identifier mapId, boolean recordReplay) {
         ensureNotStarted();
 
         try {
-            ensureCurrentMapReady();
-            List<ServerPlayerEntity> availablePlayers = collectAvailablePlayers();
+            this.roundReplayEnabled = recordReplay;
+            ensureCurrentMapReady(mapId);
+            List<ServerPlayerEntity> allOnlinePlayers = server.getPlayerManager().getPlayerList();
+            List<ServerPlayerEntity> availablePlayers = collectRoundParticipants(allOnlinePlayers);
+            List<ServerPlayerEntity> spectatorPlayers = collectRoundSpectators(allOnlinePlayers);
             if (!hasEnoughPlayersToStart(availablePlayers.size())) {
                 return;
             }
 
             this.currentPhase.set(Phase.INITIALIZE);
+            resetRoundGuideState();
             announceRoundInitialization(availablePlayers);
 
             if (resetPoint) {
                 resetPlayerPoints();
             }
 
-            preparePlayersForRound(availablePlayers);
+            preparePlayersForRound(availablePlayers, spectatorPlayers);
             this.gameInstanceManager.initialize(extractPlayerUuids(availablePlayers));
             assignRoles(availablePlayers);
-            startRound(availablePlayers);
+            startRound(availablePlayers, spectatorPlayers);
         } catch (Exception exception) {
             handleStartFailure(exception);
         }
@@ -163,16 +226,61 @@ public final class GameManager {
         }
     }
 
-    private void ensureCurrentMapReady() {
-        if (this.currentMap == null) {
-            this.currentMap = this.loadMap(DEFAULT_GAME_MAP_ID);
+    private void ensureCurrentMapReady(@Nullable Identifier requestedMapId) {
+        Identifier mapId = resolveNextRoundMapId(requestedMapId);
+        if (this.currentMap == null || !mapId.equals(this.currentMap.getId())) {
+            this.currentMap = this.loadMap(mapId);
+        }
+        if (this.currentMap.getWorld() == null) {
             this.currentMap.generateWorld(server, true);
         }
     }
 
-    private List<ServerPlayerEntity> collectAvailablePlayers() {
-        return server.getPlayerManager().getPlayerList().stream()
-                .filter(player -> !((InGamePlayerInfoProvider) player).tts$denyToPlay())
+    /**
+     * Resolves which round map id will be used when a new round starts.
+     */
+    public Identifier resolveNextRoundMapId(@Nullable Identifier requestedMapId) {
+        if (requestedMapId != null) {
+            if (!hasRoundMapTemplate(requestedMapId)) {
+                throw new IllegalArgumentException("Map template not found: " + requestedMapId);
+            }
+            return requestedMapId;
+        }
+
+        if (this.currentMap != null && !LOBBY_MAP_ID.equals(this.currentMap.getId())) {
+            return this.currentMap.getId();
+        }
+
+        return resolveDefaultRoundMapId();
+    }
+
+    private Identifier resolveDefaultRoundMapId() {
+        if (hasRoundMapTemplate(DEFAULT_GAME_MAP_ID)) {
+            return DEFAULT_GAME_MAP_ID;
+        }
+
+        return getRegisteredRoundMapIds().stream()
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No round maps are registered."));
+    }
+
+    static boolean shouldParticipateInRound(boolean denyToPlay) {
+        return !denyToPlay;
+    }
+
+    static GameMode resolveRoundStartGameMode(boolean denyToPlay) {
+        return denyToPlay ? GameMode.SPECTATOR : GameMode.ADVENTURE;
+    }
+
+    private static List<ServerPlayerEntity> collectRoundParticipants(List<ServerPlayerEntity> players) {
+        return players.stream()
+                .filter(player -> shouldParticipateInRound(((InGamePlayerInfoProvider) player).tts$denyToPlay()))
+                .toList();
+    }
+
+    private static List<ServerPlayerEntity> collectRoundSpectators(List<ServerPlayerEntity> players) {
+        return players.stream()
+                .filter(player -> !shouldParticipateInRound(((InGamePlayerInfoProvider) player).tts$denyToPlay()))
                 .toList();
     }
 
@@ -199,34 +307,67 @@ public final class GameManager {
         this.playerPoints.clear();
     }
 
-    private void preparePlayersForRound(List<ServerPlayerEntity> availablePlayers) {
+    private void preparePlayersForRound(List<ServerPlayerEntity> availablePlayers, List<ServerPlayerEntity> spectatorPlayers) {
         for (ServerPlayerEntity player : availablePlayers) {
             InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
             player.getAttributeInstance(EntityAttributes.WAYPOINT_RECEIVE_RANGE).setBaseValue(0);
             player.getAttributeInstance(EntityAttributes.WAYPOINT_TRANSMIT_RANGE).setBaseValue(25);
             info.tts$setRole(Role.SPECTATOR);
         }
+        for (ServerPlayerEntity spectator : spectatorPlayers) {
+            InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) spectator;
+            info.tts$setRole(Role.SPECTATOR);
+        }
         LOGGER.info("Player round state has been reset.");
     }
 
-    private void startRound(List<ServerPlayerEntity> availablePlayers) {
+    private void startRound(List<ServerPlayerEntity> availablePlayers, List<ServerPlayerEntity> spectatorPlayers) {
         LOGGER.info("Role assignment completed. Starting round.");
         this.gameInstanceManager.calculateAliveTraitors();
         this.currentPhase.set(Phase.POST_GAME);
         this.gameInstanceManager.onRoundStarted();
-        this.roundReplayRecorder.startRoundRecordings(server, availablePlayers);
+        this.roundReplayRecorder.clear();
+        if (!this.roundReplayEnabled) {
+            LOGGER.info("Round replay recording is disabled for this round.");
+        }
 
         this.currentMap.spreadPlayers(availablePlayers);
+        this.currentMap.spreadPlayers(spectatorPlayers);
         for (ServerPlayerEntity player : availablePlayers) {
+            InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
+            player.changeGameMode(resolveRoundStartGameMode(info.tts$denyToPlay()));
             giveRoundStarterItems(player);
         }
+        for (ServerPlayerEntity spectator : spectatorPlayers) {
+            InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) spectator;
+            spectator.changeGameMode(resolveRoundStartGameMode(info.tts$denyToPlay()));
+        }
+
+        resetLobbyBgmCooldown();
+        scheduleRoundStartBgm();
     }
 
     private static void giveRoundStarterItems(ServerPlayerEntity player) {
         player.getInventory().clear();
-        player.giveItemStack(ModItems.NORMAL_SWORD.getDefaultStack());
-        player.giveItemStack(Items.BOW.getDefaultStack());
-        player.giveItemStack(Items.LEAD.getDefaultStack().copyWithCount(5));
+        createRoundStarterItems().stream()
+                .map(ItemStack::copy)
+                .forEach(player::giveItemStack);
+    }
+
+    static List<ItemStack> createRoundStarterItems() {
+        return List.of(
+                ModItems.NORMAL_SWORD.getDefaultStack(),
+                Items.BOW.getDefaultStack(),
+                Items.SPYGLASS.getDefaultStack(),
+                Items.LEAD.getDefaultStack().copyWithCount(5)
+        );
+    }
+
+    private static void giveMissingStarterSpyglass(ServerPlayerEntity player) {
+        if (player.getInventory().containsAny(Set.of(Items.SPYGLASS))) {
+            return;
+        }
+        player.giveItemStack(Items.SPYGLASS.getDefaultStack());
     }
 
     private void handleStartFailure(Exception exception) {
@@ -234,6 +375,7 @@ public final class GameManager {
         this.roundReplayRecorder.clear();
         this.currentPhase.set(Phase.NOT_STARTED);
         this.gameInstanceManager.clear();
+        resetRoundGuideState();
         LOGGER.error("Error occurred while starting game", exception);
     }
 
@@ -253,6 +395,7 @@ public final class GameManager {
         this.currentPhase.set(Phase.END_GAME);
         this.roundReplayRecorder.stopRoundRecordings(server, true);
         sendMessage("<red>라운드 결과를 저장하는 중입니다...</red>");
+        GameDataManager.RoundSummarySnapshot roundSummarySnapshot = this.gameDataManager.getRoundSummarySnapshot();
 
         for (UUID playerUuid : this.gameInstanceManager.getParticipants()) {
             applyRoundResult(playerUuid, innocentResult);
@@ -262,10 +405,12 @@ public final class GameManager {
         this.gameDataManager.saveRoundData();
         this.gameInstanceManager.clear();
         this.roundReplayRecorder.clear();
+        resetRoundGuideState();
 
         sendMessage("<green>라운드 결과 저장이 완료되었습니다.</green>");
         this.currentPhase.set(Phase.NOT_STARTED);
         restoreAllPlayersToLobby();
+        scheduleRoundSummaryDialogs(roundSummarySnapshot);
     }
 
     private void applyRoundResult(UUID playerUuid, PlayerDataInstance.Result innocentResult) {
@@ -347,6 +492,33 @@ public final class GameManager {
         this.spawnMap.spreadPlayers(players);
     }
 
+    private void scheduleRoundSummaryDialogs(GameDataManager.RoundSummarySnapshot roundSummarySnapshot) {
+        List<RoundSummaryDialog.RoundSummaryTraitorEntry> traitorEntries = roundSummarySnapshot.traitorEntries().stream()
+                .map(entry -> new RoundSummaryDialog.RoundSummaryTraitorEntry(
+                        entry.uuid(),
+                        entry.name()
+                ))
+                .toList();
+        List<RoundSummaryDialog.RoundSummaryKillEntry> killEntries = roundSummarySnapshot.killEntries().stream()
+                .map(entry -> new RoundSummaryDialog.RoundSummaryKillEntry(
+                        entry.elapsedSeconds(),
+                        entry.killerName(),
+                        entry.killerRole(),
+                        entry.victimName(),
+                        entry.victimRole()
+                ))
+                .toList();
+
+        Scheduler.INSTANCE.submit((s) -> {
+            if (this.currentPhase.get() != Phase.NOT_STARTED) {
+                return;
+            }
+            for (ServerPlayerEntity player : s.getPlayerManager().getPlayerList()) {
+                RoundSummaryDialog.showRoundSummary(player, killEntries, traitorEntries);
+            }
+        }, 40);
+    }
+
     private void assignRoles(List<ServerPlayerEntity> availablePlayers) {
         if (server == null) {
             throw new IllegalStateException("Server is not set yet.");
@@ -425,7 +597,7 @@ public final class GameManager {
             InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) selectedPlayer;
             info.tts$setRole(role);
             info.tts$addPoints(
-                    role == Role.DETECTIVE ? 5 : 2,
+                    role == Role.DETECTIVE ? 2 : 1,
                     InGamePlayerInfoProvider.PointReason.ROLE_PLAYING
             );
             selectedNames.append(selectedPlayer.getGameProfile().getName()).append(", ");
@@ -446,11 +618,18 @@ public final class GameManager {
             LOGGER.info("Player {} is not loaded. Creating new data...", player.getGameProfile().getName());
             this.gameDataManager.createNewData(player.getUuid());
         }
+        sendFirstJoinWelcomeMessage(player);
         this.gameInstanceManager.onAudienceChanged();
     }
 
+    private static void sendFirstJoinWelcomeMessage(ServerPlayerEntity player) {
+
+        player.sendMessage(Text.literal("\n").append(byMiniMessage(FIRST_JOIN_WELCOME_LINE_1)), false);
+        player.sendMessage(byMiniMessage(FIRST_JOIN_WELCOME_LINE_2), false);
+    }
+
     public void onPlayerLeft(ServerPlayerEntity player) {
-        this.roundReplayRecorder.stopPlayerRecording(server, player, true);
+        this.roundTimerBossBarManager.removePlayer(player);
 
         if (shouldJoinAsSpectator(this.currentPhase.get())) {
             recordLeaveRoundResult(player);
@@ -491,6 +670,91 @@ public final class GameManager {
         }
 
         this.gameInstanceManager.tick();
+    }
+
+    public void tickRoundTimerBossBar() {
+        if (server == null) {
+            return;
+        }
+
+        this.roundTimerBossBarManager.tick(server, this.currentPhase.get(), this.getLeftTicks());
+    }
+
+    public void tickGuideHints() {
+        List<Config.RotatingGuideTip> rotatingGuideTips = Config.getInstance().rotatingGuideTips;
+        if (server == null || rotatingGuideTips.isEmpty()) {
+            return;
+        }
+
+        if (server.getTicks() % GUIDE_TIP_INTERVAL_TICKS != 0) {
+            return;
+        }
+
+        if (this.rotatingGuideIndex >= rotatingGuideTips.size()) {
+            this.rotatingGuideIndex = 0;
+        }
+
+        Config.RotatingGuideTip tip = rotatingGuideTips.get(this.rotatingGuideIndex);
+        this.rotatingGuideIndex = (this.rotatingGuideIndex + 1) % rotatingGuideTips.size();
+        broadcastGuideTip(tip.title(), tip.message());
+    }
+
+    public void tickLobbyBgm() {
+        if (server == null) {
+            return;
+        }
+
+        Phase phase = this.currentPhase.get();
+        if (!shouldTickLobbyBgm(phase)) {
+            this.lobbyBgmCooldownTicks = LOBBY_BGM_INTERVAL_TICKS;
+            return;
+        }
+
+        if (this.lobbyBgmCooldownTicks > 0) {
+            this.lobbyBgmCooldownTicks--;
+            return;
+        }
+
+        playRandomLobbyBgm(server);
+        resetLobbyBgmCooldown();
+    }
+
+    private void scheduleRoundStartBgm() {
+        Scheduler.INSTANCE.submit(scheduledServer -> {
+            if (!this.currentPhase.get().isInProgress()) {
+                return;
+            }
+            playRandomLobbyBgm(scheduledServer);
+            resetLobbyBgmCooldown();
+        }, ROUND_START_BGM_DELAY_TICKS);
+    }
+
+    private void resetLobbyBgmCooldown() {
+        this.lobbyBgmCooldownTicks = LOBBY_BGM_INTERVAL_TICKS;
+    }
+
+    private void playRandomLobbyBgm(MinecraftServer currentServer) {
+        SoundEvent bgm = selectLobbyMorningBgm(this.rand.get().nextInt(LOBBY_MORNING_BGM.size()));
+        for (ServerPlayerEntity player : currentServer.getPlayerManager().getPlayerList()) {
+            InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
+            if (!shouldPlayLobbyBgmForPlayer(info.tts$bgmEnabled())) {
+                continue;
+            }
+            player.playSoundToPlayer(bgm, SoundCategory.MASTER, 1.0f, 1.0f);
+        }
+    }
+
+    static boolean shouldTickLobbyBgm(Phase phase) {
+        return phase == Phase.NOT_STARTED || phase == Phase.MIDDLE_GAME;
+    }
+
+    static SoundEvent selectLobbyMorningBgm(int index) {
+        int normalizedIndex = Math.floorMod(index, LOBBY_MORNING_BGM.size());
+        return LOBBY_MORNING_BGM.get(normalizedIndex);
+    }
+
+    static boolean shouldPlayLobbyBgmForPlayer(boolean bgmEnabled) {
+        return bgmEnabled;
     }
 
     public boolean isGameStarted() {
@@ -535,6 +799,17 @@ public final class GameManager {
         return this.gameInstanceManager.isAlive(player);
     }
 
+    public int getAliveParticipantCount() {
+        return this.gameInstanceManager.getAliveParticipantCount();
+    }
+
+    /**
+     * Whether the recipient should see traitor fake-team/glow reveal packets during combat phases.
+     */
+    public boolean canReceiveTraitorRevealPackets(ServerPlayerEntity player) {
+        return this.gameInstanceManager.canReceiveTraitorRevealPackets(player);
+    }
+
     Set<UUID> getPlayers() {
         return this.gameInstanceManager.getParticipants();
     }
@@ -544,14 +819,232 @@ public final class GameManager {
     }
 
     public void onPlayerDamaged(@Nullable ServerPlayerEntity attacker, ServerPlayerEntity victim, float amount) {
+        this.gameDataManager.recordDamageData(attacker, victim, amount);
         this.gameInstanceManager.onPlayerDamaged(attacker, victim, amount);
+    }
+
+    public void recordAccuseResult(ServerPlayerEntity sender, ServerPlayerEntity target) {
+        this.gameDataManager.recordAccuseResult(sender, target);
+    }
+
+    /**
+     * Builds a snapshot of lifetime player stats using persisted per-round logs and player data.
+     */
+    public @NotNull PlayerStatisticsSnapshot getPlayerStatisticsSnapshot(UUID playerUuid) {
+        PlayerDataInstance data = this.gameDataManager.getData(playerUuid);
+        if (data == null) {
+            throw new IllegalStateException("Player data not loaded for uuid: " + playerUuid);
+        }
+
+        GameDataManager.CombatStatsSnapshot combatStats = this.gameDataManager.getCombatStatsSnapshot(playerUuid);
+        RoleRoundStats roleRoundStats = summarizeRoleRounds(data);
+        PlayerDataInstance.AccuseStats accuseStats = data.getAccuseStats();
+        return new PlayerStatisticsSnapshot(
+                combatStats.kills(),
+                combatStats.deaths(),
+                combatStats.teamKills(),
+                accuseStats.attempts(),
+                accuseStats.hits(),
+                roleRoundStats.playCount(),
+                roleRoundStats.innocentCount(),
+                roleRoundStats.traitorCount(),
+                roleRoundStats.detectiveCount()
+        );
+    }
+
+    /**
+     * Convenience overload for {@link #getPlayerStatisticsSnapshot(UUID)}.
+     */
+    public @NotNull PlayerStatisticsSnapshot getPlayerStatisticsSnapshot(ServerPlayerEntity player) {
+        return getPlayerStatisticsSnapshot(player.getUuid());
+    }
+
+    private static RoleRoundStats summarizeRoleRounds(PlayerDataInstance data) {
+        int innocentCount = 0;
+        int traitorCount = 0;
+        int detectiveCount = 0;
+
+        for (PlayerDataInstance.PlayerGameResult result : data.getResults()) {
+            Role role = result.role();
+            switch (role) {
+                case INNOCENT -> innocentCount++;
+                case TRAITOR -> traitorCount++;
+                case DETECTIVE -> detectiveCount++;
+                case SPECTATOR -> {
+                    // Spectator result is not counted as a played role round.
+                }
+            }
+        }
+
+        return new RoleRoundStats(
+                innocentCount + traitorCount + detectiveCount,
+                innocentCount,
+                traitorCount,
+                detectiveCount
+        );
     }
 
     public void onKilled(@Nullable ServerPlayerEntity attacker, ServerPlayerEntity victim, DamageSource damageSource) {
         this.gameDataManager.recordKillData(attacker, victim, damageSource);
         this.gameInstanceManager.onPlayerKilled(attacker, victim, damageSource);
+        scheduleDeathCombatDialog(victim.getUuid());
+        releaseHeldLeashes(victim);
 
         applyDeathSpectatorState(victim);
+    }
+
+    private static void releaseHeldLeashes(ServerPlayerEntity victim) {
+        for (Leashable leashable : Leashable.collectLeashablesHeldBy(victim)) {
+            leashable.detachLeashWithoutDrop();
+        }
+    }
+
+    private void scheduleDeathCombatDialog(UUID victimUuid) {
+        Scheduler.INSTANCE.submit((s) -> {
+            ServerPlayerEntity victim = s.getPlayerManager().getPlayer(victimUuid);
+            if (victim == null) {
+                return;
+            }
+            showDeathCombatDialog(victim);
+        }, DEATH_COMBAT_LOG_DELAY_TICKS);
+    }
+
+    private void showDeathCombatDialog(ServerPlayerEntity victim) {
+        UUID victimUuid = victim.getUuid();
+        PlayerRoundDataInstance roundData = this.gameDataManager.getRoundData(victimUuid);
+        if (roundData == null) {
+            LOGGER.warn(
+                    "Cannot show death combat dialog for {} ({}): round data is missing.",
+                    victim.getGameProfile().getName(),
+                    victimUuid
+            );
+            return;
+        }
+
+        List<DeathCombatLogDialog.DamageEntry> damageEntries = this.gameDataManager.getDamageLogData(victimUuid).stream()
+                .map(data -> new DeathCombatLogDialog.DamageEntry(
+                        data.elapsedSeconds(),
+                        data.counterpartName(),
+                        data.counterpartUuid(),
+                        data.counterpartRole(),
+                        data.amount(),
+                        data.dealtByRecorder()
+                ))
+                .toList();
+        DeathCombatLogDialog.showKillLog(victim, roundData, damageEntries);
+    }
+
+    void onCombatPhaseStarted() {
+        if (!this.currentPhase.get().canShowRole()) {
+            return;
+        }
+        if (this.roundReplayEnabled) {
+            if (this.currentMap != null && this.currentMap.getWorld() != null) {
+                this.roundReplayRecorder.startRoundChunkRecording(
+                        server,
+                        this.currentMap.getWorld(),
+                        this.currentMap.getTemplateBounds(),
+                        this.currentMap.getId()
+                );
+            } else {
+                LOGGER.warn("Cannot start chunk replay recording: current round map world is not ready.");
+            }
+        }
+
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            giveMissingStarterSpyglass(player);
+            sendRoleRevealTitle(player);
+            sendRoleGuide(player);
+        }
+    }
+
+    private static void sendRoleRevealTitle(ServerPlayerEntity player) {
+        InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
+        Role role = info.tts$getRole();
+        if (role == Role.SPECTATOR) {
+            return;
+        }
+
+        var bundle = new BundleS2CPacket(List.of(
+                new TitleS2CPacket(byMiniMessage(resolveRoleRevealTitle(role))),
+                new SubtitleS2CPacket(byMiniMessage(resolveRoleRevealObjective(role))),
+                new TitleFadeS2CPacket(
+                        ROLE_REVEAL_TITLE_FADE_IN_TICKS,
+                        ROLE_REVEAL_TITLE_STAY_TICKS,
+                        ROLE_REVEAL_TITLE_FADE_OUT_TICKS
+                )
+
+        ));
+        player.networkHandler.sendPacket(bundle);
+    }
+
+    static String resolveRoleRevealTitle(Role role) {
+        return "당신은 " + resolveRoleRevealName(role) + " 입니다";
+    }
+
+    static String resolveRoleRevealObjective(Role role) {
+        return switch (role) {
+            case INNOCENT -> "모든 <red>트레이터</red>를 처치하세요!";
+            case TRAITOR -> "모든 <green>시민팀</green>을 처치하세요!";
+            case DETECTIVE -> "정보를 취합하여 모든 <red>트레이터</red>를 처치하세요!";
+            case SPECTATOR -> "";
+        };
+    }
+
+    private static String resolveRoleRevealName(Role role) {
+        return switch (role) {
+            case INNOCENT -> "<green>시민</green>";
+            case TRAITOR -> "<red>트레이터</red>";
+            case DETECTIVE -> "<blue>탐정</blue>";
+            case SPECTATOR -> "관전자";
+        };
+    }
+
+    public void onShopOpened(ServerPlayerEntity player) {
+        if (!this.currentPhase.get().canShowRole()) {
+            return;
+        }
+
+        InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
+        if (!info.tts$tipsEnabled()) {
+            return;
+        }
+        if (!this.shopGuidePlayers.add(player.getUuid())) {
+            return;
+        }
+
+        sendGuideChat(
+                player,
+                "SHOP TIP",
+                "Spend your points on utility and role-specific tools."
+        );
+    }
+
+    public void onFirstCorpseDiscovered() {
+        if (!this.currentPhase.get().canShowRole() || this.firstCorpseGuideShown) {
+            return;
+        }
+
+        this.firstCorpseGuideShown = true;
+        broadcastGuideTipWithPadding(
+                "CORPSE FOUND",
+                "Inspect corpses for role info. Detectives can reveal killers with DNA Scanner."
+        );
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            player.playSoundToPlayer(SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), SoundCategory.MASTER, 1.0f, 1.0f);
+        }
+    }
+
+    public void onOvertimeStarted() {
+        if (this.overtimeGuideShown) {
+            return;
+        }
+
+        this.overtimeGuideShown = true;
+        broadcastGuideTip(
+                "OVERTIME",
+                "Traitor kills can extend overtime. Keep pressure on objectives."
+        );
     }
 
     private static void applyDeathSpectatorState(ServerPlayerEntity victim) {
@@ -589,9 +1082,67 @@ public final class GameManager {
     }
 
     public List<Identifier> getAllMapIds() {
-        List<Identifier> mapIds = new ArrayList<>(TroubleInTerroristTownMod.BUILT_IN_MAPS);
+        Set<Identifier> mapIds = new LinkedHashSet<>();
+        mapIds.addAll(TroubleInTerroristTownMod.BUILT_IN_MAPS);
         mapIds.addAll(Config.getInstance().additionalMaps);
-        return mapIds;
+        mapIds.addAll(scanMapTemplateIds());
+        mapIds.remove(LOBBY_MAP_ID);
+
+        return mapIds.stream()
+                .sorted(Comparator.comparing(Identifier::toString))
+                .toList();
+    }
+
+    public List<Identifier> getRegisteredRoundMapIds() {
+        return this.templates.keySet().stream()
+                .filter(identifier -> !LOBBY_MAP_ID.equals(identifier))
+                .sorted(Comparator.comparing(Identifier::toString))
+                .toList();
+    }
+
+    public boolean hasRoundMapTemplate(Identifier mapId) {
+        return !LOBBY_MAP_ID.equals(mapId) && this.templates.containsKey(mapId);
+    }
+
+    List<Identifier> scanMapTemplateIds() {
+        if (server == null) {
+            return List.of();
+        }
+
+        Map<Identifier, Resource> resources = server.getResourceManager().findResources(
+                MAP_TEMPLATE_RESOURCE_PATH,
+                identifier -> identifier.getPath().endsWith(MAP_TEMPLATE_EXTENSION)
+        );
+
+        return resources.keySet().stream()
+                .map(GameManager::toMapIdentifier)
+                .flatMap(Optional::stream)
+                .sorted(Comparator.comparing(Identifier::toString))
+                .toList();
+    }
+
+    private static Optional<Identifier> toMapIdentifier(Identifier resourceId) {
+        String resourcePath = resourceId.getPath();
+        String prefix = MAP_TEMPLATE_RESOURCE_PATH + "/";
+        if (!resourcePath.startsWith(prefix) || !resourcePath.endsWith(MAP_TEMPLATE_EXTENSION)) {
+            return Optional.empty();
+        }
+
+        String mapPath = resourcePath.substring(
+                prefix.length(),
+                resourcePath.length() - MAP_TEMPLATE_EXTENSION.length()
+        );
+        if (mapPath.isBlank()) {
+            LOGGER.warn("Skipping invalid map template resource '{}': empty map path.", resourceId);
+            return Optional.empty();
+        }
+
+        Identifier mapId = Identifier.tryParse(resourceId.getNamespace() + ":" + mapPath);
+        if (mapId == null) {
+            LOGGER.warn("Skipping invalid map template resource '{}': invalid map identifier.", resourceId);
+            return Optional.empty();
+        }
+        return Optional.of(mapId);
     }
 
     TTTMap loadMap(Identifier id) {
@@ -605,6 +1156,112 @@ public final class GameManager {
         } catch (IOException exception) {
             throw new RuntimeException(exception);
         }
+    }
+
+    private void sendRoleGuide(ServerPlayerEntity player) {
+        InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
+        if (!info.tts$tipsEnabled()) {
+            return;
+        }
+
+        Role role = info.tts$getRole();
+        switch (role) {
+            case INNOCENT -> {
+                sendGuideChat(
+                        player,
+                        "역할: <green>이노센트</green>",
+                        "<blue>탐정</blue>을 도와 <red>트레이터</red>를 처치하세요. 탐정을 제외한 모두를 의심하세요."
+                );
+            }
+            case TRAITOR -> {
+                sendGuideChat(
+                        player,
+                        "역할: <red>트레이터</red>",
+                        "의심을 피해 <green>이노센트</green>와 </blue>탐정</blue>를 모두 사살하세요."
+                );
+            }
+            case DETECTIVE -> {
+                sendGuideChat(
+                        player,
+                        "역할: <blue>탐정</blue>",
+                        "단서를 찾아 <green>이노센트</green>들과 함께 <red>트레이터</red>들을 찾고 제거하세요."
+                );
+            }
+            case SPECTATOR -> {
+                // No guide needed.
+            }
+        }
+    }
+
+    private void broadcastGuideTip(String title, String message) {
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
+            if (!info.tts$tipsEnabled()) {
+                continue;
+            }
+            sendGuideChat(player, title, message);
+        }
+    }
+
+    private void broadcastGuideTipWithPadding(String title, String message) {
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
+            if (!info.tts$tipsEnabled()) {
+                continue;
+            }
+            sendGuideChatWithPadding(player, title, message);
+        }
+    }
+
+    private static void sendGuideChat(ServerPlayerEntity player, String title, String message) {
+        String normalizedTitle = title == null ? "" : title.trim();
+        String normalizedMessage = message == null ? "" : message.trim();
+        if (normalizedTitle.isEmpty() && normalizedMessage.isEmpty()) {
+            return;
+        }
+
+        String chatMessage = normalizedTitle.isEmpty()
+                ? "<yellow>[TIP]</yellow> " + normalizedMessage
+                : "<yellow>[TIP]</yellow> " + normalizedTitle + " - " + normalizedMessage;
+//        player.sendMessage(byMiniMessage(chatMessage), false);
+    }
+
+    private static void sendGuideChatWithPadding(ServerPlayerEntity player, String title, String message) {
+        sendGuideBlankLine(player);
+        sendGuideChat(player, title, message);
+        sendGuideBlankLine(player);
+    }
+
+    private static void sendGuideBlankLine(ServerPlayerEntity player) {
+        player.sendMessage(Text.literal(" "), false);
+    }
+
+    private void resetRoundGuideState() {
+        this.firstCorpseGuideShown = false;
+        this.overtimeGuideShown = false;
+        this.shopGuidePlayers.clear();
+        this.rotatingGuideIndex = 0;
+    }
+
+    public record PlayerStatisticsSnapshot(
+            int kills,
+            int deaths,
+            int teamKills,
+            int accuseAttempts,
+            int accuseHits,
+            int playCount,
+            int innocentCount,
+            int traitorCount,
+            int detectiveCount
+    ) {
+    }
+
+    private record RoleRoundStats(
+            int playCount,
+            int innocentCount,
+            int traitorCount,
+            int detectiveCount
+    ) {
     }
 
     public enum Phase {

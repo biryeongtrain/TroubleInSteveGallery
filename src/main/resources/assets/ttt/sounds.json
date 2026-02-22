@@ -1,4 +1,101 @@
 {
+  "bgm.morning_bgm1" : {
+    "sounds" : [
+      {
+        "name" : "ttt:bgm/morning_bgm1",
+        "stream" : true
+      }
+    ]
+  },
+  "bgm.morning_bgm2" : {
+    "sounds" : [
+      {
+        "name" : "ttt:bgm/morning_bgm2",
+        "stream" : true
+      }
+    ]
+  },
+  "bgm.morning_bgm3" : {
+    "sounds" : [
+      {
+        "name" : "ttt:bgm/morning_bgm3",
+        "stream" : true
+      }
+    ]
+  },
+  "bgm.morning_bgm4" : {
+    "sounds" : [
+      {
+        "name" : "ttt:bgm/morning_bgm4",
+        "stream" : true
+      }
+    ]
+  },
+  "bgm.morning_bgm5" : {
+    "sounds" : [
+      {
+        "name" : "ttt:bgm/morning_bgm5",
+        "stream" : true
+      }
+    ]
+  },
+  "bgm.bgm_1" : {
+    "sounds" : [
+      {
+        "name" : "ttt:bgm/bgm_1",
+        "stream" : true
+      }
+    ]
+  },
+  "bgm.bgm_2" : {
+    "sounds" : [
+      {
+        "name" : "ttt:bgm/bgm_2",
+        "stream" : true
+      }
+    ]
+  },
+  "bgm.bgm_3" : {
+    "sounds" : [
+      {
+        "name" : "ttt:bgm/bgm_3",
+        "stream" : true
+      }
+    ]
+  },
+  "bgm.vote_bgm2" : {
+    "sounds" : [
+      {
+        "name" : "ttt:bgm/vote_bgm2",
+        "stream" : true
+      }
+    ]
+  },
+  "countdown.5sec" : {
+    "sounds" : [
+      "ttt:countdown/5sec"
+    ]
+  },
+  "countdown.4sec" : {
+    "sounds" : [
+      "ttt:countdown/4sec"
+    ]
+  },
+  "countdown.3sec" : {
+    "sounds" : [
+      "ttt:countdown/3sec"
+    ]
+  },
+  "countdown.2sec" : {
+    "sounds" : [
+      "ttt:countdown/2sec"
+    ]
+  },
+  "countdown.1sec" : {
+    "sounds" : [
+      "ttt:countdown/1sec"
+    ]
+  },
   "item.jihad_bomb.active" : {
     "sounds" : [
       "ttt:item/jihad_bomb"

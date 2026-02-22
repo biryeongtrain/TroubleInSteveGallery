@@ -13,7 +13,8 @@
     "ServerConfigurationNetworkHandlerMixin",
     "ServerPlayerEntityMixin",
     "ServerPlayNetworkHandlerMixin",
-    "block.AbstractBlockStateMixin"
+    "block.AbstractBlockStateMixin",
+    "polydex.PolydexRangeFixer"
   ],
   "injectors": {
     "defaultRequire": 1

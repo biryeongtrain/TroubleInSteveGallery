@@ -1,5 +1,6 @@
 package kim.biryeong.ttt.mixin;
 
+import com.mojang.serialization.Codec;
 import eu.pb4.sidebars.api.SidebarInterface;
 import eu.pb4.sidebars.impl.SidebarHolder;
 import kim.biryeong.ttt.entity.CorpseEntity;
@@ -48,6 +49,10 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
     @Unique
     private boolean tts$denyToPlay = false;
     @Unique
+    private boolean tts$tipsEnabled = true;
+    @Unique
+    private boolean tts$bgmEnabled = true;
+    @Unique
     private  SuicideBombInfo tts$bombInfo = new SuicideBombInfo();
     @Unique
     private boolean ttt$isInCombat = false;
@@ -75,6 +80,16 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
     }
 
     @Override
+    public void tts$setTipsEnabled(boolean enabled) {
+        this.tts$tipsEnabled = enabled;
+    }
+
+    @Override
+    public void tts$setBgmEnabled(boolean enabled) {
+        this.tts$bgmEnabled = enabled;
+    }
+
+    @Override
     public void tts$addPoints(int points, PointReason reason) {
         GameManager.getInstance().addPoint(((ServerPlayerEntity) (Object) this).getUuid(), points);
     }
@@ -92,6 +107,16 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
     @Override
     public boolean tts$denyToPlay() {
         return this.tts$denyToPlay;
+    }
+
+    @Override
+    public boolean tts$tipsEnabled() {
+        return this.tts$tipsEnabled;
+    }
+
+    @Override
+    public boolean tts$bgmEnabled() {
+        return this.tts$bgmEnabled;
     }
 
     @Override
@@ -226,10 +251,14 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
     @Inject(method = "writeCustomData", at = @At("HEAD"))
     private void ttt$writeCustomData(WriteView view, CallbackInfo ci) {
         view.put("tts$loadout", Identifier.CODEC, this.tts$loadout.loadoutId());
+        view.put("tts$tips_enabled", Codec.BOOL, this.tts$tipsEnabled);
+        view.put("tts$bgm_enabled", Codec.BOOL, this.tts$bgmEnabled);
     }
 
     @Inject(method = "readCustomData", at = @At("HEAD"))
     private void ttt$readCustomData(ReadView view, CallbackInfo ci) {
         this.tts$loadout = ItemLoadouts.get(view.read("tts$loadout", Identifier.CODEC).orElse(ItemLoadouts.DEFAULT_LOADOUT_KEY));
+        this.tts$tipsEnabled = view.read("tts$tips_enabled", Codec.BOOL).orElse(true);
+        this.tts$bgmEnabled = view.read("tts$bgm_enabled", Codec.BOOL).orElse(true);
     }
 }

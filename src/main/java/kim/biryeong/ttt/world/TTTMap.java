@@ -13,6 +13,7 @@ import net.minecraft.world.GameRules;
 import net.minecraft.world.TeleportTarget;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import xyz.nucleoid.map_templates.BlockBounds;
 import xyz.nucleoid.fantasy.Fantasy;
 import xyz.nucleoid.fantasy.RuntimeWorldConfig;
 import xyz.nucleoid.fantasy.RuntimeWorldHandle;
@@ -72,6 +73,14 @@ public class TTTMap {
 
     public ServerWorld getWorld() {
         return world;
+    }
+
+    public Identifier getId() {
+        return this.instanceId;
+    }
+
+    public BlockBounds getTemplateBounds() {
+        return this.template.getBounds();
     }
 
     public void spreadPlayers(List<ServerPlayerEntity> participants) {

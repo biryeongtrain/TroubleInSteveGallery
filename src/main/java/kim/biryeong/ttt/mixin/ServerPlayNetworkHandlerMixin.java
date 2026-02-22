@@ -51,13 +51,12 @@ public abstract class ServerPlayNetworkHandlerMixin {
             return;
         }
 
-        InGamePlayerInfoProvider provider = (InGamePlayerInfoProvider) player;
         GameManager manager = GameManager.getInstance();
         if (!manager.getCurrentPhase().canShowRole()) {
             return;
         }
-        // FakeTeam packets are sent only to alive traitors, so glow override must match that recipient scope.
-        if (!manager.isAlive(player) || provider.tts$getRole() != Role.TRAITOR) {
+        // Glow override scope must stay in sync with fake traitor-team packet recipients.
+        if (!manager.canReceiveTraitorRevealPackets(player)) {
             return;
         }
 
