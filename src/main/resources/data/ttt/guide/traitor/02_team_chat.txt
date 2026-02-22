@@ -1,0 +1,9 @@
+### Section: PageInfo
+### EndSection: PageInfo
+
+###Header: 아군과 상호작용
+###Align: Left
+###Image: ttt:traitor_conversation
+<red>트레이터</red>는 다른 직업군과 다르게 아군과 비밀 대화가 가능합니다. <nl>
+/tc <대화내용> 을 통해 할 말을 전달하세요. 다른 트레이터와 협동하세요.
+

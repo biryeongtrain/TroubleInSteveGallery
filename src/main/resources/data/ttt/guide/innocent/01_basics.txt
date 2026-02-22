@@ -1,0 +1,8 @@
+### Section: PageInfo
+### EndSection: PageInfo
+
+###Header: 믿을만한 아군 찾기
+###Align: Left
+<green>이노센트</green>은 TTT에서 가장 고독하면서 의심받는 직업입니다. 당신이 결백해도, 탐정의 확인이 없는 한 계속 결백을 의심받게 됩니다. <nl>
+<green>이노센트</green>을 잘 하기 위해서는 믿을 사람을 잘 선택해야합니다. 만약 그 사람이 <red>트레이터</red>라면, 당신은 시체가 될 겁니다. <nl>
+

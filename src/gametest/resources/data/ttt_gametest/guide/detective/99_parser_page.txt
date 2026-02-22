@@ -1,0 +1,12 @@
+### Section: PageInfo
+title=GT Detective Page
+### EndSection: PageInfo
+
+### Align: center
+### Image: ttt:conveyor_example gt-detective-image
+### Image: ttt:overtime
+### ItemAlign: right
+### Item: minecraft:iron_sword <green>gt-detective-item-1</green>
+### ItemAlign: left
+### Item: minecraft:compass gt-detective-item-2
+- gt-detective-line-1

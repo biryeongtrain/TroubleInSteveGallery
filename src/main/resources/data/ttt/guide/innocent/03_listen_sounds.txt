@@ -1,0 +1,12 @@
+### Section: PageInfo
+### EndSection: PageInfo
+
+###Header: 소리를 잘 듣기
+###Align: Left
+<red>트레이터</red>가 사용하는 특수 아이템들은 대부분 고유의 소리가 존재합니다. <nl>
+예시로, <red>트레이터</red>가 사용하는 아이템 중 소리가 나는 아이템은 다음과 같습니다.
+
+###Item: ttt:bamboo_dagger 상대를 일격에 처치하지만, 사용 시 <bold> 파괴되는 소리를 냅니다. </bold>
+###Item: ttt:teleporter 사용 시 엔더맨 텔레포트 소리를 냅니다. 탐정도 사용 할 수 있습니다.
+<nl>
+탐정이 아닌 인원이 이러한 아이템을 사용 할 경우, 트레이터로 판단 할 근거로 활용할 수 있습니다.

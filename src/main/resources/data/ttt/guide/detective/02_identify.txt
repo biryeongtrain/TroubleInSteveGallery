@@ -1,0 +1,7 @@
+### Section: PageInfo
+### EndSection: PageInfo
+
+### Header: 탐정 식별
+### Image:ttt:detective_identify
+모든 플레이어는 탐정의 위치를 멀리서도 파악할 수 있습니다. 꼭 염두하세요.
+

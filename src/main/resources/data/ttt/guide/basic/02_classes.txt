@@ -1,0 +1,19 @@
+### Section: PageInfo
+title=직업
+image=ttt:ttt_classes
+image_description=Trouble In TerroristTown 직업들
+### EndSection: PageInfo
+
+### Header: <green> 이노센트 </green>
+### Align: Center
+<green>이노센트</green>는 TTT에서 가장 많은 인원이 소속되는 직업입니다. 마피아게임류의 시민과 동일합니다. <nl>
+<green>이노센트</green>의 목표는 <blue>탐정</blue>을 보조하여 <red>트레이터</red>를 찾는 것입니다. <nl>
+<nl2>
+### Header: <red>트레이터</red>
+### Align: Center
+<red>트레이터</red>는 모든 시민팀(<green>이노센트</green>와 <blue>탐정</blue>)을 제한 시간 내에 처치하는 것이 목표입니다. 다만, <green>시민팀</green>에게 노출될 경우 사살당할 수 있으니 유의하세요.
+<nl2>
+### Header: <blue>탐정</blue>
+### Align: Center
+<blue>탐정</blue>은 트레이터가 남긴 흔적등을 조사 해 <green>이노센트</green>와 <red>트레이터</red>를 판별하고 이를 통해 모든 트레이터를 처치해야합니다. <nl>
+<blue>탐정</blue>은 상점에서 여러 조사도구를 구매할 수 있으니 꼭 구매해서 사용하세요.

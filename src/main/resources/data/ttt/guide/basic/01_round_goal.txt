@@ -1,0 +1,8 @@
+### Section: PageInfo
+###Align: Center
+title=Trouble In Terrorist Town 이란?
+image=ttt:ttt_title
+### EndSection: PageInfo
+
+Trouble In Terrorist Town은 게리모드에서 만들어진 모드를 마인크래프트로 재해석한 단타입니다. <nl>
+이노센트와 탐정은 트레이터를 찾아 모두 처치하고, 트레이터는 모든 이노센트와 탐정을 처치하면 승리합니다.

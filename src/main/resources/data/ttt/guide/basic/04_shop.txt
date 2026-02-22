@@ -1,0 +1,9 @@
+### Section: PageInfo
+title=상점
+### EndSection: PageInfo
+###Image:ttt:detective_shop
+
+###Header: 장비 갖춰입기
+###Align: Left
+TTT 에는 직업 별로 구매할 수 있는 상점이 존재합니다. <nl>
+F키를 눌러 아이템을 구매해 팀을 유리한 상황으로 이끄세요.

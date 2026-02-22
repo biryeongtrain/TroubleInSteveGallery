@@ -1,0 +1,8 @@
+### Section: PageInfo
+### EndSection: PageInfo
+
+###Header: 아군 추적하기
+###Align: Left
+###Image: ttt:traitor_esp
+트레이터는 언제나 아군의 위치를 확인할 수 있습니다. 긴밀하게 움직이고, 수단을 강구하세요.
+

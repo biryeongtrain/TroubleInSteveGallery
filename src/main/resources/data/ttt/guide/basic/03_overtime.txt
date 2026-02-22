@@ -1,0 +1,10 @@
+### Section: PageInfo
+title=오버타임
+image=ttt:overtime
+### EndSection: PageInfo
+
+### Header: 추가시간
+### Align: Left
+추가시간은 모든 시간이 소진되었을 때, <red>트레이터</red>가 최소 1킬 이상 할 경우 발생합니다. <nl>
+추가시간은 <red>트레이터</red>가 지금까지 처치한 <green>시민팀</green>의 수에 따라 증가하며, 몇 초가 남았는지는 <red>트레이터</red>를 제외하고는 알 수 없습니다. <nl>
+<red>트레이터</red>는 이 시간 내에 모든 시민팀을 처치하지 않으면 패배합니다.
