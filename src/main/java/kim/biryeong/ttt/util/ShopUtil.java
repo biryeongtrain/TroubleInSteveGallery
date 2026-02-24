@@ -156,8 +156,9 @@ public class ShopUtil {
                             byMiniMessage("플레이어의 시체를 지웁니다."),
                             byMiniMessage("약 5초동안 불탄 다음, <red><bold>흔적도 없이 사라지게 만듭니다.</red>"),
                             byMiniMessage("불타고 있는 시체는 <red><bold>더 이상 조사할 수 없습니다.</red>"),
-                            byMiniMessage("구매 비용 : 5 포인트")
+                            byMiniMessage("구매 비용 : 3 포인트")
                     ))
+                    .point(3)
                     .build()
     );
 

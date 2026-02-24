@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.ModifyConstant;
 public abstract class PolydexRangeFixer implements PolydexTarget {
     @ModifyConstant(method = "updateRaycast", constant = @Constant(doubleValue = 8.02))
     private double ttt$fixRange(double original) {
-        return 32;
+        return 48;
     }
 
     @WrapOperation(method = "updateRaycast", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/hit/HitResult;getType()Lnet/minecraft/util/hit/HitResult$Type;"))

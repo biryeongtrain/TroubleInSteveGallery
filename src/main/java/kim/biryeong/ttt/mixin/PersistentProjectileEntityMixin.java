@@ -53,6 +53,7 @@ public abstract class PersistentProjectileEntityMixin extends Entity {
         projectile.setNoGravity(true);
         this.ttt$gravityFlagResent = true;
         this.velocityModified = true;
+        this.velocityDirty=true;
     }
 
     @Inject(method = "tick", at = @At("TAIL"))

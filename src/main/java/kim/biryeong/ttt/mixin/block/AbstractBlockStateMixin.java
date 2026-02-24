@@ -25,16 +25,16 @@ import xyz.nucleoid.fantasy.RuntimeWorld;
 public class AbstractBlockStateMixin {
     @Inject(method = "getStateForNeighborUpdate", at = @At("HEAD"), cancellable = true)
     private void cancelNeighborUpdate(WorldView world, ScheduledTickView tickView, BlockPos pos, Direction direction, BlockPos neighborPos, BlockState neighborState, Random random, CallbackInfoReturnable<BlockState> cir) {
-        if (world instanceof RuntimeWorld) {
-            cir.setReturnValue((BlockState) ((Object) this));
-        }
+//        if (world instanceof RuntimeWorld) {
+//            cir.setReturnValue((BlockState) ((Object) this));
+//        }
     }
 
     @Inject(method = "neighborUpdate", at = @At("HEAD"), cancellable = true)
     private void cancelNeighborUpdate(World world, BlockPos pos, Block sourceBlock, WireOrientation wireOrientation, boolean notify, CallbackInfo ci) {
-        if (world instanceof RuntimeWorld) {
-            ci.cancel();
-        }
+//        if (world instanceof RuntimeWorld) {
+//            ci.cancel();
+//        }
     }
 
     @Inject(method = "updateNeighbors*", at = @At("HEAD"), cancellable = true)

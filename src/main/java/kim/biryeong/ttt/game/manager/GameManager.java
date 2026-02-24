@@ -88,7 +88,6 @@ public final class GameManager {
     private static final String FIRST_JOIN_WELCOME_LINE_2 =
             "<yellow>처음 플레이하는 유저는 <green>G <yellow>키를 눌러 가이드를 읽어주세요.";
     private static final List<SoundEvent> LOBBY_MORNING_BGM = List.of(
-            Sounds.MORNING_BGM_1,
             Sounds.MORNING_BGM_2,
             Sounds.MORNING_BGM_3,
             Sounds.MORNING_BGM_4,

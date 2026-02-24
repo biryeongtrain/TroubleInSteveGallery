@@ -39,14 +39,6 @@
       }
     ]
   },
-  "bgm.bgm_1" : {
-    "sounds" : [
-      {
-        "name" : "ttt:bgm/bgm_1",
-        "stream" : true
-      }
-    ]
-  },
   "bgm.bgm_2" : {
     "sounds" : [
       {
