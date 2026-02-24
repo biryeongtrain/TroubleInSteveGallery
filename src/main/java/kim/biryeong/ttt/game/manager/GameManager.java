@@ -77,6 +77,7 @@ public final class GameManager {
     private static final int ROUND_START_BGM_DELAY_TICKS = 40;
     private static final int GUIDE_TIP_INTERVAL_TICKS = 600;
     private static final int DEATH_COMBAT_LOG_DELAY_TICKS = 30;
+    private static final int ROLE_ENTROPY_BASELINE = 100;
     private static final int ROLE_REVEAL_TITLE_FADE_IN_TICKS = 10;
     private static final int ROLE_REVEAL_TITLE_STAY_TICKS = 40;
     private static final int ROLE_REVEAL_TITLE_FADE_OUT_TICKS = 10;
@@ -104,6 +105,7 @@ public final class GameManager {
     private final AtomicReference<Xoroshiro128PlusPlusRandom> rand =
             new AtomicReference<>(new Xoroshiro128PlusPlusRandom(RandomSeed.getSeed()));
     private final Object2IntOpenHashMap<UUID> playerPoints = new Object2IntOpenHashMap<>();
+    private final Object2IntOpenHashMap<UUID> roleEntropyByUuid = new Object2IntOpenHashMap<>();
     private final Set<UUID> shopGuidePlayers = new HashSet<>();
     private final RoundTimerBossBarManager roundTimerBossBarManager = new RoundTimerBossBarManager();
 
@@ -128,6 +130,7 @@ public final class GameManager {
 
     private GameManager() {
         this.executor.named("TTT Game Manager");
+        this.roleEntropyByUuid.defaultReturnValue(ROLE_ENTROPY_BASELINE);
     }
 
     public static GameManager getInstance() {
@@ -937,6 +940,13 @@ public final class GameManager {
      */
     public boolean canReceiveTraitorRevealPackets(ServerPlayerEntity player) {
         return this.gameInstanceManager.canReceiveTraitorRevealPackets(player);
+    }
+
+    /**
+     * Whether the target should be forced glowing for this recipient under traitor reveal rules.
+     */
+    public boolean shouldForceTraitorRevealGlow(ServerPlayerEntity recipient, ServerPlayerEntity target) {
+        return this.gameInstanceManager.shouldForceTraitorRevealGlow(recipient, target);
     }
 
     Set<UUID> getPlayers() {

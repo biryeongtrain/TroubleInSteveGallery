@@ -20,6 +20,9 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Config {
+    public static final int DEFAULT_ROLE_ENTROPY_GAIN_MIN = 10;
+    public static final int DEFAULT_ROLE_ENTROPY_GAIN_MAX = 35;
+
     private static final Path CONFIG_DIR = FabricLoader.getInstance()
             .getConfigDir()
             .resolve(TroubleInTerroristTownMod.MOD_ID);
@@ -30,6 +33,10 @@ public class Config {
                     Codec.INT.fieldOf("playTimeSeconds").forGetter(config -> config.playTimeSeconds),
                     Codec.INT.fieldOf("overTimePerKills").forGetter(config -> config.overTimePerKills),
                     Codec.INT.fieldOf("maxOverTimeSeconds").forGetter(config -> config.maxOverTimeSeconds),
+                    Codec.INT.optionalFieldOf("roleEntropyGainMin", DEFAULT_ROLE_ENTROPY_GAIN_MIN)
+                            .forGetter(config -> config.roleEntropyGainMin),
+                    Codec.INT.optionalFieldOf("roleEntropyGainMax", DEFAULT_ROLE_ENTROPY_GAIN_MAX)
+                            .forGetter(config -> config.roleEntropyGainMax),
                     Identifier.CODEC.listOf().fieldOf("additionalMaps").forGetter(config -> config.additionalMaps),
                     RotatingGuideTip.CODEC.listOf()
                             .optionalFieldOf("rotatingGuideTips", defaultRotatingGuideTips())
@@ -47,6 +54,8 @@ public class Config {
             int playTimeSeconds,
             int overTimePerKills,
             int maxOverTimeSeconds,
+            int roleEntropyGainMin,
+            int roleEntropyGainMax,
             List<Identifier> additionalMaps,
             List<RotatingGuideTip> rotatingGuideTips
     ) {
@@ -55,6 +64,8 @@ public class Config {
         this.playTimeSeconds = playTimeSeconds;
         this.overTimePerKills = overTimePerKills;
         this.maxOverTimeSeconds = maxOverTimeSeconds;
+        this.roleEntropyGainMin = roleEntropyGainMin;
+        this.roleEntropyGainMax = roleEntropyGainMax;
         this.additionalMaps = additionalMaps;
         this.rotatingGuideTips = rotatingGuideTips;
     }
@@ -68,6 +79,8 @@ public class Config {
     public int playTimeSeconds = 240;
     public int overTimePerKills = 5;
     public int maxOverTimeSeconds = 60;
+    public int roleEntropyGainMin = DEFAULT_ROLE_ENTROPY_GAIN_MIN;
+    public int roleEntropyGainMax = DEFAULT_ROLE_ENTROPY_GAIN_MAX;
     public List<Identifier> additionalMaps = new ArrayList<>();
     public List<RotatingGuideTip> rotatingGuideTips = defaultRotatingGuideTips();
 
