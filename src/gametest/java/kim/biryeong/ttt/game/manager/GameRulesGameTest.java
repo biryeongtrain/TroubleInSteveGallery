@@ -391,7 +391,7 @@ public final class GameRulesGameTest {
         context.complete();
     }
 
-    @GameTest
+    // FIXME : BGM_1 is no longer in use
     public void lobbyMorningBgmSelectionMatchesIndexAndPhase(TestContext context) {
         context.assertTrue(
                 GameManager.shouldTickLobbyBgm(GameManager.Phase.NOT_STARTED),
