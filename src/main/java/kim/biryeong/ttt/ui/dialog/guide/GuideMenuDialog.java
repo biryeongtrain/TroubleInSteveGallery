@@ -25,6 +25,7 @@ import static kim.biryeong.ttt.game.manager.GameManager.byMiniMessage;
 final class GuideMenuDialog {
     private static final Logger LOGGER = LoggerFactory.getLogger(GuideMenuDialog.class);
     private static final String MENU_TITLE = "TTT 가이드 목록";
+    private static final String SELF_STATS_TITLE = "자기 통계 보기";
     private static final String BASIC_TITLE = "기본 규칙";
     private static final String INNOCENT_TITLE = "이노센트 팁";
     private static final String TRAITOR_TITLE = "트레이터 팁";
@@ -62,10 +63,31 @@ final class GuideMenuDialog {
         );
 
         List<DialogActionButtonData> categoryButtons = List.of(
-                GuideDialogUiSupport.createCommandButton(BASIC_TITLE, "/tts guide basic"),
-                GuideDialogUiSupport.createCommandButton(INNOCENT_TITLE, "/tts guide innocent"),
-                GuideDialogUiSupport.createCommandButton(TRAITOR_TITLE, "/tts guide traitor"),
-                GuideDialogUiSupport.createCommandButton(DETECTIVE_TITLE, "/tts guide detective")
+                GuideDialogUiSupport.createCommandButton(
+                        BASIC_TITLE,
+                        "/tts guide basic",
+                        GuideDialogUiSupport.MENU_BUTTON_WIDTH
+                ),
+                GuideDialogUiSupport.createCommandButton(
+                        INNOCENT_TITLE,
+                        "/tts guide innocent",
+                        GuideDialogUiSupport.MENU_BUTTON_WIDTH
+                ),
+                GuideDialogUiSupport.createCommandButton(
+                        TRAITOR_TITLE,
+                        "/tts guide traitor",
+                        GuideDialogUiSupport.MENU_BUTTON_WIDTH
+                ),
+                GuideDialogUiSupport.createCommandButton(
+                        DETECTIVE_TITLE,
+                        "/tts guide detective",
+                        GuideDialogUiSupport.MENU_BUTTON_WIDTH
+                ),
+                GuideDialogUiSupport.createCommandButton(
+                        SELF_STATS_TITLE,
+                        "/tts stats",
+                        GuideDialogUiSupport.MENU_BUTTON_WIDTH * 2
+                )
         );
 
         return new MultiActionDialog(

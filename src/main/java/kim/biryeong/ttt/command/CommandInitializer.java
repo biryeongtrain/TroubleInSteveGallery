@@ -256,6 +256,23 @@ public class CommandInitializer {
                 })
                 .build();
 
+        LiteralCommandNode<ServerCommandSource> resetEntropy = CommandManager.literal("reset_entropy")
+                .executes(ctx -> resetEntropyForPlayers(
+                        ctx.getSource(),
+                        ctx.getSource().getServer().getPlayerManager().getPlayerList()
+                ))
+                .then(CommandManager.literal("all")
+                        .executes(ctx -> resetEntropyForPlayers(
+                                ctx.getSource(),
+                                ctx.getSource().getServer().getPlayerManager().getPlayerList()
+                        )))
+                .then(CommandManager.argument("players", EntityArgumentType.players())
+                        .executes(ctx -> resetEntropyForPlayers(
+                                ctx.getSource(),
+                                EntityArgumentType.getPlayers(ctx, "players")
+                        )))
+                .build();
+
         LiteralCommandNode<ServerCommandSource> debugNode = CommandManager.literal("tts_debug")
                 .requires(source -> source.hasPermissionLevel(3))
                 .build();
@@ -291,6 +308,7 @@ public class CommandInitializer {
         adminRoot.addChild(stopGame);
         adminRoot.addChild(setRole);
         adminRoot.addChild(reload);
+        adminRoot.addChild(resetEntropy);
 
         userRoot.addChild(spectatorMode);
         userRoot.addChild(spectatorModeAlias);
@@ -724,6 +742,37 @@ public class CommandInitializer {
         return Command.SINGLE_SUCCESS;
     }
 
+    private static int resetEntropyForPlayers(ServerCommandSource source, Collection<ServerPlayerEntity> players) {
+        if (players.isEmpty()) {
+            source.sendError(Text.literal("초기화할 플레이어가 없습니다."));
+            return 0;
+        }
+
+        GameManager manager = GameManager.getInstance();
+        int resetCount = 0;
+        for (ServerPlayerEntity player : players) {
+            int before = manager.getRoleEntropy(player);
+            manager.resetRoleEntropy(player);
+            int after = manager.getRoleEntropy(player);
+            resetCount++;
+            TroubleInTerroristTownMod.LOGGER.info(
+                    "Role entropy reset by {} for {} ({}) {} -> {}",
+                    source.getName(),
+                    player.getGameProfile().getName(),
+                    player.getUuid(),
+                    before,
+                    after
+            );
+        }
+
+        int finalResetCount = resetCount;
+        source.sendFeedback(
+                () -> Text.literal("역할 엔트로피를 " + finalResetCount + "명 초기화했습니다."),
+                true
+        );
+        return Command.SINGLE_SUCCESS;
+    }
+
     private static int setBgmEnabled(ServerCommandSource source, boolean enabled) {
         if (!source.isExecutedByPlayer()) {
             source.sendError(Text.literal("This command can only be used by players."));
@@ -768,7 +817,16 @@ public class CommandInitializer {
             return 0;
         }
 
-        for (Text line : buildStatsLines(target.getGameProfile().getName(), stats)) {
+        List<Text> lines = buildStatsLines(target.getGameProfile().getName(), stats);
+        if (source.isExecutedByPlayer()) {
+            ServerPlayerEntity viewer = source.getPlayer();
+            if (viewer != null) {
+                PlayerStatisticsDialog.show(viewer, lines);
+                return Command.SINGLE_SUCCESS;
+            }
+        }
+
+        for (Text line : lines) {
             source.sendFeedback(() -> line, false);
         }
         return Command.SINGLE_SUCCESS;
