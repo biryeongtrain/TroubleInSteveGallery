@@ -126,7 +126,6 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
             return ActionResult.PASS;
         }
 
-        // TODO SGUI Execute
         if (!isRevealed && GameManager.getInstance().isAlive(serverPlayer)) {
             ServerPlayerEntity deadPlayer = GameManager.getInstance().getPlayer(this.gameProfile.getId());
             Role playerRole = Role.SPECTATOR;
@@ -143,7 +142,7 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
             this.hitboxInteraction.setCustomNameVisible(true);
             this.isRevealed = true;
 
-
+            // TODO Text Template
             serverPlayer.getServer().getPlayerManager().broadcast(Text.literal("\n[사망 알림!] ").styled(style -> style.withColor(Formatting.YELLOW))
                     .append(AvatarTextRenderer.resolveSmallAvatar(serverPlayer.getUuid(), serverPlayer.getNameForScoreboard(), false))
                     .append(byMiniMessage(" <yellow>%s</yellow><white>님이 ".formatted(serverPlayer.getNameForScoreboard())))
