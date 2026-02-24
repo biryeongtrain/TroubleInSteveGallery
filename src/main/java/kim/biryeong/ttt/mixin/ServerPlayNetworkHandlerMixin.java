@@ -3,8 +3,6 @@ package kim.biryeong.ttt.mixin;
 import com.mojang.authlib.GameProfile;
 import io.netty.channel.ChannelFutureListener;
 import kim.biryeong.ttt.game.manager.GameManager;
-import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
-import kim.biryeong.ttt.player.role.Role;
 import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.data.TrackedDataHandler;
 import net.minecraft.network.ClientConnection;
@@ -55,14 +53,14 @@ public abstract class ServerPlayNetworkHandlerMixin {
         if (!manager.getCurrentPhase().canShowRole()) {
             return;
         }
-        // Glow override scope must stay in sync with fake traitor-team packet recipients.
+        // Glow override scope must stay in sync with GameInstanceManager traitor reveal rules.
         if (!manager.canReceiveTraitorRevealPackets(player)) {
             return;
         }
 
-        Set<Integer> aliveTraitorEntityIds = getAliveTraitorEntityIds();
+        Set<Integer> forcedGlowEntityIds = getForcedGlowEntityIds(manager, player);
         if (packet instanceof EntityTrackerUpdateS2CPacket trackerPacket) {
-            if (!aliveTraitorEntityIds.contains(trackerPacket.id())) {
+            if (!forcedGlowEntityIds.contains(trackerPacket.id())) {
                 return;
             }
 
@@ -74,7 +72,7 @@ public abstract class ServerPlayNetworkHandlerMixin {
 
             for (var oldPacket : packets) {
                 if (oldPacket instanceof EntityTrackerUpdateS2CPacket trackerPacket) {
-                    if (!aliveTraitorEntityIds.contains(trackerPacket.id())) {
+                    if (!forcedGlowEntityIds.contains(trackerPacket.id())) {
                         newPackets.add(oldPacket);
                         continue;
                     }
@@ -94,9 +92,9 @@ public abstract class ServerPlayNetworkHandlerMixin {
 
     private Set<Integer> getAliveTraitorEntityIds() {
         GameManager manager = GameManager.getInstance();
+    private Set<Integer> getForcedGlowEntityIds(GameManager manager, ServerPlayerEntity recipient) {
         return this.server.getPlayerManager().getPlayerList().stream()
-                .filter(manager::isAlive)
-                .filter(candidate -> ((InGamePlayerInfoProvider) candidate).tts$getRole() == Role.TRAITOR)
+                .filter(candidate -> manager.shouldForceTraitorRevealGlow(recipient, candidate))
                 .map(ServerPlayerEntity::getId)
                 .collect(Collectors.toSet());
     }

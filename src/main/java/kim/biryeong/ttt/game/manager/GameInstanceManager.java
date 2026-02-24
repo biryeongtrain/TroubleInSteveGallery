@@ -15,6 +15,8 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
 import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.projectile.FireworkRocketEntity;
 import net.minecraft.item.Items;
 import net.minecraft.network.packet.s2c.play.EntityTrackerUpdateS2CPacket;
@@ -34,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,6 +48,9 @@ import java.util.stream.Collectors;
 @SuppressWarnings("unused")
 class GameInstanceManager {
     private static final int TICKS_PER_SECOND = 20;
+    private static final int TRAITOR_POSITION_REVEAL_INTERVAL_TICKS = 30 * TICKS_PER_SECOND;
+    private static final int TRAITOR_POSITION_REVEAL_DURATION_TICKS = 5 * TICKS_PER_SECOND;
+    private static final int FINAL_INNOCENT_GLOW_DURATION_TICKS = Integer.MAX_VALUE;
     private static final int WARMUP_COUNTDOWN_SOUND_START_SECONDS = 5;
     private static final int WARMUP_COUNTDOWN_SOUND_START_TICKS = WARMUP_COUNTDOWN_SOUND_START_SECONDS * TICKS_PER_SECOND;
     private static final int ROUND_LOG_INTERVAL_TICKS = 200;
@@ -67,6 +73,7 @@ class GameInstanceManager {
     private final Set<UUID> fakeTraitorTeamRecipients = new HashSet<>();
     private final Set<UUID> fakeDetectiveTeamRecipients = new HashSet<>();
     private final Set<UUID> fakeHiddenNameTagTeamRecipients = new HashSet<>();
+    private final Set<UUID> managedGlowPlayerUuids = new HashSet<>();
     private final Map<UUID, Integer> karma = new HashMap<>();
 
     private int aliveTraitors = 0;
@@ -82,8 +89,11 @@ class GameInstanceManager {
     private Team fakeTraitorTeam;
     private Team fakeDetectiveTeam;
     private Team fakeHiddenNameTagTeam;
+    private boolean traitorPositionRevealActive;
+    private boolean finalInnocentGlobalGlowActive;
 
     public void initialize(List<UUID> participantUuids) {
+        deactivateFinalInnocentGlobalGlow();
         this.participants.clear();
         this.participants.addAll(participantUuids);
 
@@ -104,6 +114,8 @@ class GameInstanceManager {
         this.fakeTraitorTeam = null;
         this.fakeDetectiveTeam = null;
         this.fakeHiddenNameTagTeam = null;
+        this.traitorPositionRevealActive = false;
+        this.finalInnocentGlobalGlowActive = false;
 
         Config config = Config.getInstance();
         this.gamePlayTimeTicks = config.playTimeSeconds * TICKS_PER_SECOND;
@@ -171,17 +183,20 @@ class GameInstanceManager {
     }
 
     public void onGameStopped() {
+        deactivateFinalInnocentGlobalGlow();
     }
 
     void onRoundStarted() {
         refreshHiddenNameTagTeamPackets();
         refreshDetectiveTeamPackets();
+        syncFinalInnocentGlobalGlow();
     }
 
     void onAudienceChanged() {
         refreshHiddenNameTagTeamPackets();
         refreshDetectiveTeamPackets();
         refreshTraitorTeamPackets();
+        syncFinalInnocentGlobalGlow();
     }
 
     boolean canReceiveTraitorRevealPackets(ServerPlayerEntity player) {
@@ -194,6 +209,24 @@ class GameInstanceManager {
             return alive;
         }
         return !alive;
+    }
+
+    static boolean shouldEnableFinalInnocentGlobalGlow(
+            GameManager.Phase phase,
+            int aliveTraitors,
+            int aliveInnocents
+    ) {
+        return phase.canShowRole() && aliveTraitors > 0 && aliveInnocents == 1;
+    }
+
+    static boolean shouldEnableTraitorPositionReveal(GameManager.Phase phase, int elapsedCombatTicks) {
+        if (!phase.canShowRole() || elapsedCombatTicks < TRAITOR_POSITION_REVEAL_INTERVAL_TICKS) {
+            return false;
+        }
+
+        int ticksSinceFirstReveal = elapsedCombatTicks - TRAITOR_POSITION_REVEAL_INTERVAL_TICKS;
+        int cycleTick = Math.floorMod(ticksSinceFirstReveal, TRAITOR_POSITION_REVEAL_INTERVAL_TICKS);
+        return cycleTick < TRAITOR_POSITION_REVEAL_DURATION_TICKS;
     }
 
     static boolean shouldSendDetectiveTeamPackets(GameManager.Phase phase) {
@@ -246,6 +279,8 @@ class GameInstanceManager {
             return;
         }
 
+        syncTraitorPositionReveal();
+
         logRoundProgressIfNeeded();
 
         if (shouldCheckWinCondition() && !GameManager.getInstance().debugMode && checkWinConditionAndEndIfNeeded()) {
@@ -259,6 +294,19 @@ class GameInstanceManager {
         }
 
         this.elapsedTicks++;
+    }
+
+    private void syncTraitorPositionReveal() {
+        boolean shouldEnable = shouldEnableTraitorPositionReveal(
+                GameManager.getInstance().getCurrentPhase(),
+                this.elapsedTicks
+        );
+        if (this.traitorPositionRevealActive == shouldEnable) {
+            return;
+        }
+
+        this.traitorPositionRevealActive = shouldEnable;
+        refreshTraitorTeamPackets();
     }
 
     private boolean tickWarmupPhase() {
@@ -332,6 +380,7 @@ class GameInstanceManager {
 
     private boolean checkWinConditionAndEndIfNeeded() {
         int aliveInnocents = this.aliveParticipants.size() - this.aliveTraitors;
+        syncFinalInnocentGlobalGlow(aliveInnocents);
         if (this.aliveTraitors <= 0) {
             GameManager.getInstance().sendMessage("<green>시민 팀 승리!</green>");
             this.requestToWin(PlayerDataInstance.Result.WIN);
@@ -464,6 +513,8 @@ class GameInstanceManager {
     }
 
     public void clear() {
+        this.traitorPositionRevealActive = false;
+        deactivateFinalInnocentGlobalGlow();
         clearHiddenNameTagTeamPackets();
         clearTraitorTeamPackets();
         clearDetectiveTeamPackets();
@@ -516,6 +567,7 @@ class GameInstanceManager {
         this.fakeHiddenNameTagTeamRecipients.remove(playerUuid);
 
         removeAliveParticipant(playerUuid, playerInfo.tts$getRole());
+        syncFinalInnocentGlobalGlow();
 
         refreshHiddenNameTagTeamPackets();
         refreshDetectiveTeamPackets();
@@ -538,6 +590,7 @@ class GameInstanceManager {
         }
 
         removeAliveParticipant(victimUuid, victimInfo.tts$getRole());
+        syncFinalInnocentGlobalGlow();
 
         refreshHiddenNameTagTeamPackets();
         refreshDetectiveTeamPackets();
@@ -593,6 +646,72 @@ class GameInstanceManager {
         boolean wasAlive = this.aliveParticipants.remove(participantUuid);
         if (wasAlive && role == Role.TRAITOR) {
             this.aliveTraitors = Math.max(0, this.aliveTraitors - 1);
+        }
+    }
+
+    private void syncFinalInnocentGlobalGlow() {
+        syncFinalInnocentGlobalGlow(this.aliveParticipants.size() - this.aliveTraitors);
+    }
+
+    private void syncFinalInnocentGlobalGlow(int aliveInnocents) {
+        boolean shouldEnable = shouldEnableFinalInnocentGlobalGlow(
+                GameManager.getInstance().getCurrentPhase(),
+                this.aliveTraitors,
+                aliveInnocents
+        );
+        if (shouldEnable) {
+            this.finalInnocentGlobalGlowActive = true;
+            applyManagedGlowToAllPlayers();
+            return;
+        }
+
+        deactivateFinalInnocentGlobalGlow();
+    }
+
+    private void applyManagedGlowToAllPlayers() {
+        if (GameManager.server == null) {
+            return;
+        }
+        for (ServerPlayerEntity player : GameManager.server.getPlayerManager().getPlayerList()) {
+            UUID playerUuid = player.getUuid();
+            boolean hasManagedGlow = this.managedGlowPlayerUuids.contains(playerUuid);
+            boolean currentlyGlowing = player.hasStatusEffect(StatusEffects.GLOWING);
+            if (hasManagedGlow && currentlyGlowing) {
+                continue;
+            }
+
+            player.addStatusEffect(new StatusEffectInstance(
+                    StatusEffects.GLOWING,
+                    FINAL_INNOCENT_GLOW_DURATION_TICKS,
+                    0,
+                    false,
+                    false,
+                    false
+            ));
+            this.managedGlowPlayerUuids.add(playerUuid);
+        }
+    }
+
+    private void deactivateFinalInnocentGlobalGlow() {
+        this.finalInnocentGlobalGlowActive = false;
+        clearManagedGlowFromOnlinePlayers();
+    }
+
+    private void clearManagedGlowFromOnlinePlayers() {
+        if (GameManager.server == null || this.managedGlowPlayerUuids.isEmpty()) {
+            return;
+        }
+
+        Iterator<UUID> iterator = this.managedGlowPlayerUuids.iterator();
+        while (iterator.hasNext()) {
+            UUID playerUuid = iterator.next();
+            ServerPlayerEntity player = GameManager.server.getPlayerManager().getPlayer(playerUuid);
+            if (player == null) {
+                continue;
+            }
+
+            player.removeStatusEffect(StatusEffects.GLOWING);
+            iterator.remove();
         }
     }
 
@@ -723,6 +842,7 @@ class GameInstanceManager {
 
     private void refreshTraitorTeamPackets() {
         if (!GameManager.getInstance().getCurrentPhase().canShowRole()) {
+            clearTraitorTeamPackets();
             return;
         }
 
@@ -800,12 +920,8 @@ class GameInstanceManager {
                 continue;
             }
 
-            InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) target;
-            if (info.tts$getRole() != Role.TRAITOR) {
-                continue;
-            }
-
-            byte flags = getEntityFlagsWithGlow(target);
+            boolean forceGlow = shouldForceTraitorRevealGlow(recipient, target);
+            byte flags = getEntityFlags(target, forceGlow);
             EntityTrackerUpdateS2CPacket packet = new EntityTrackerUpdateS2CPacket(
                     target.getId(),
                     List.of(new DataTracker.SerializedEntry<>(0, TrackedDataHandlerRegistry.BYTE, flags))
@@ -814,7 +930,25 @@ class GameInstanceManager {
         }
     }
 
-    private static byte getEntityFlagsWithGlow(Entity entity) {
+    boolean shouldForceTraitorRevealGlow(ServerPlayerEntity recipient, ServerPlayerEntity target) {
+        if (!this.aliveParticipants.contains(target.getUuid())) {
+            return false;
+        }
+
+        Role targetRole = ((InGamePlayerInfoProvider) target).tts$getRole();
+        if (targetRole == Role.TRAITOR) {
+            return canReceiveTraitorRevealPackets(recipient);
+        }
+
+        if (!this.traitorPositionRevealActive || !this.isAlive(recipient)) {
+            return false;
+        }
+
+        InGamePlayerInfoProvider recipientInfo = (InGamePlayerInfoProvider) recipient;
+        return recipientInfo.tts$getRole() == Role.TRAITOR;
+    }
+
+    private static byte getEntityFlags(Entity entity, boolean forceGlow) {
         byte flags = 0;
         if (entity.isOnFire()) {
             flags |= 0x01;
@@ -831,11 +965,10 @@ class GameInstanceManager {
         if (entity.isInvisible()) {
             flags |= 0x20;
         }
-        if (entity.isGlowing()) {
+        if (entity.isGlowing() || forceGlow) {
             flags |= 0x40;
         }
-        // Force glowing bit for traitor-outline visibility.
-        return (byte) (flags | 0x40);
+        return flags;
     }
 
     private void updateFakeTraitorTeamMembers(Team team) {

@@ -193,6 +193,76 @@ public final class GameRulesGameTest {
     }
 
     @GameTest
+    public void finalInnocentGlobalGlowIsEnabledOnlyForCombatClutchState(TestContext context) {
+        context.assertFalse(
+                GameInstanceManager.shouldEnableFinalInnocentGlobalGlow(GameManager.Phase.NOT_STARTED, 1, 1),
+                Text.literal("not started should never enable final innocent glow")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldEnableFinalInnocentGlobalGlow(GameManager.Phase.POST_GAME, 1, 1),
+                Text.literal("warmup should not enable final innocent glow")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldEnableFinalInnocentGlobalGlow(GameManager.Phase.MIDDLE_GAME, 0, 1),
+                Text.literal("no alive traitor means no clutch glow")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldEnableFinalInnocentGlobalGlow(GameManager.Phase.MIDDLE_GAME, 2, 2),
+                Text.literal("more than one innocent should not enable clutch glow")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldEnableFinalInnocentGlobalGlow(GameManager.Phase.MIDDLE_GAME, 2, 1),
+                Text.literal("middle game with one innocent left should enable clutch glow")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldEnableFinalInnocentGlobalGlow(GameManager.Phase.OVER_TIME, 1, 1),
+                Text.literal("overtime with one innocent left should enable clutch glow")
+        );
+        context.complete();
+    }
+
+    @GameTest
+    public void traitorPositionRevealWindowFollowsThirtySecondCycle(TestContext context) {
+        context.assertFalse(
+                GameInstanceManager.shouldEnableTraitorPositionReveal(GameManager.Phase.NOT_STARTED, 600),
+                Text.literal("not started should not enable timed traitor reveal")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldEnableTraitorPositionReveal(GameManager.Phase.MIDDLE_GAME, 0),
+                Text.literal("timed reveal should not start immediately")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldEnableTraitorPositionReveal(GameManager.Phase.MIDDLE_GAME, 599),
+                Text.literal("timed reveal should stay off before 30 seconds")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldEnableTraitorPositionReveal(GameManager.Phase.MIDDLE_GAME, 600),
+                Text.literal("timed reveal should start at 30 seconds")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldEnableTraitorPositionReveal(GameManager.Phase.MIDDLE_GAME, 699),
+                Text.literal("timed reveal should stay on for 5 seconds")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldEnableTraitorPositionReveal(GameManager.Phase.MIDDLE_GAME, 700),
+                Text.literal("timed reveal should end after 5 seconds")
+        );
+        context.assertFalse(
+                GameInstanceManager.shouldEnableTraitorPositionReveal(GameManager.Phase.MIDDLE_GAME, 1199),
+                Text.literal("timed reveal should stay off until next cycle")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldEnableTraitorPositionReveal(GameManager.Phase.MIDDLE_GAME, 1200),
+                Text.literal("timed reveal should restart every 30 seconds")
+        );
+        context.assertTrue(
+                GameInstanceManager.shouldEnableTraitorPositionReveal(GameManager.Phase.OVER_TIME, 600),
+                Text.literal("overtime should use the same timed reveal schedule")
+        );
+        context.complete();
+    }
+
+    @GameTest
     public void hiddenNameTagPacketsAreSentOnlyDuringRoundPhases(TestContext context) {
         context.assertFalse(
                 GameInstanceManager.shouldSendHiddenNameTagTeamPackets(GameManager.Phase.NOT_STARTED),
