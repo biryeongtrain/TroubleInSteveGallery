@@ -61,10 +61,10 @@ If the field is missing, built-in defaults are used.
   - Spectators cannot use this command.
   - Cooldown: `5` seconds per player.
 - `/tts stats`
-  - Shows your personal TTT stats.
+  - Opens your personal TTT stats dialog.
   - Includes kill/death, accusation hit rate, team-kill rate, and role-play counts.
 - `/tts stats <player>`
-  - Shows TTT stats for the specified online player.
+  - Opens a stats dialog for the specified online player.
 - `/t <target>`
   - Shortcut alias for `/tts accuse <target>`.
 - `/tc <message>`
@@ -94,6 +94,8 @@ If the field is missing, built-in defaults are used.
 ## Guide Dialog Access
 
 - Press `G` (Server Dialog key) to open the quick guide menu.
+- Press `ESC` -> `Server Links` and click `TTT 가이드 (/tts guide)` for the guide shortcut link.
+- The top menu button opens your own TTT stats dialog (`/tts stats`).
 - The menu provides category buttons:
   - 기본 규칙
   - 이노센트 팁

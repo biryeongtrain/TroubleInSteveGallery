@@ -1,6 +1,7 @@
 package kim.biryeong.ttt.mixin;
 
 import com.mojang.authlib.GameProfile;
+import com.mojang.datafixers.util.Either;
 import io.netty.channel.ChannelFutureListener;
 import kim.biryeong.ttt.game.manager.GameManager;
 import net.minecraft.entity.data.DataTracker;
@@ -8,11 +9,14 @@ import net.minecraft.entity.data.TrackedDataHandler;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.listener.ClientPlayPacketListener;
 import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.common.ServerLinksS2CPacket;
 import net.minecraft.network.packet.s2c.play.BundleS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntityTrackerUpdateS2CPacket;
+import net.minecraft.server.ServerLinks;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerCommonNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -21,6 +25,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -28,6 +33,12 @@ import java.util.stream.Collectors;
 
 @Mixin(ServerCommonNetworkHandler.class)
 public abstract class ServerPlayNetworkHandlerMixin {
+    private static final URI GUIDE_LINK_URI = URI.create(
+            "https://github.com/biryeongtrain/TroubleInSteveGallery/blob/main/docs/guide-hints.md#guide-dialog-access"
+    );
+    private static final String GUIDE_LINK_URI_STRING = GUIDE_LINK_URI.toString();
+    private static final Text GUIDE_LINK_TEXT = Text.literal("TTT 가이드 (/tts guide)");
+
     @Shadow
     public abstract void send(Packet<?> packet, @Nullable ChannelFutureListener channelFutureListener);
 
@@ -44,6 +55,16 @@ public abstract class ServerPlayNetworkHandlerMixin {
 
     @Inject(method = "send", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/ClientConnection;send(Lnet/minecraft/network/packet/Packet;Lio/netty/channel/ChannelFutureListener;Z)V"), cancellable = true)
     private void ttt$sendIfCanViewTratior(Packet<?> packet, @Nullable ChannelFutureListener channelFutureListener, CallbackInfo ci) {
+        // ESC "Server Links" dialog only uses this packet; append guide entry once without altering existing links.
+        if (packet instanceof ServerLinksS2CPacket linksPacket) {
+            packet = appendGuideServerLink(linksPacket);
+            if (packet != linksPacket) {
+                this.connection.send(packet, channelFutureListener);
+                ci.cancel();
+                return;
+            }
+        }
+
         ServerPlayerEntity player = this.server.getPlayerManager().getPlayer(this.getProfile().getId());
         if (player == null) {
             return;
@@ -90,8 +111,18 @@ public abstract class ServerPlayNetworkHandlerMixin {
         ci.cancel();
     }
 
-    private Set<Integer> getAliveTraitorEntityIds() {
-        GameManager manager = GameManager.getInstance();
+    private ServerLinksS2CPacket appendGuideServerLink(ServerLinksS2CPacket packet) {
+        boolean alreadyHasGuideLink = packet.links().stream()
+                .anyMatch(link -> GUIDE_LINK_URI_STRING.equals(link.link()));
+        if (alreadyHasGuideLink) {
+            return packet;
+        }
+
+        List<ServerLinks.StringifiedEntry> links = new ArrayList<>(packet.links());
+        links.add(new ServerLinks.StringifiedEntry(Either.right(GUIDE_LINK_TEXT), GUIDE_LINK_URI_STRING));
+        return new ServerLinksS2CPacket(List.copyOf(links));
+    }
+
     private Set<Integer> getForcedGlowEntityIds(GameManager manager, ServerPlayerEntity recipient) {
         return this.server.getPlayerManager().getPlayerList().stream()
                 .filter(candidate -> manager.shouldForceTraitorRevealGlow(recipient, candidate))
