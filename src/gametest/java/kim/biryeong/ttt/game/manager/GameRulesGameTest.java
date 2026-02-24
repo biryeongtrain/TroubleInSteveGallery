@@ -8,9 +8,12 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.test.TestContext;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.random.Xoroshiro128PlusPlusRandom;
 import net.minecraft.world.GameMode;
 
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public final class GameRulesGameTest {
     @GameTest
@@ -24,6 +27,64 @@ public final class GameRulesGameTest {
         context.assertEquals(1, GameManager.calculateTraitorCount(4), Text.literal("traitors for 4 players"));
         context.assertEquals(2, GameManager.calculateTraitorCount(8), Text.literal("traitors for 8 players"));
         context.assertEquals(3, GameManager.calculateTraitorCount(12), Text.literal("traitors for 12 players"));
+        context.complete();
+    }
+
+    @GameTest
+    public void entropyCandidateSelectionCollectsHighestEntropyCandidates(TestContext context) {
+        UUID lowEntropy = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        UUID highEntropyA = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        UUID highEntropyB = UUID.fromString("33333333-3333-3333-3333-333333333333");
+        List<UUID> candidates = List.of(lowEntropy, highEntropyA, highEntropyB);
+        Map<UUID, Integer> entropyByUuid = Map.of(
+                lowEntropy, 120,
+                highEntropyA, 180,
+                highEntropyB, 180
+        );
+
+        List<UUID> highestCandidates = GameManager.collectHighestEntropyCandidates(
+                candidates,
+                entropyByUuid,
+                100
+        );
+        context.assertEquals(2, highestCandidates.size(), Text.literal("two highest entropy candidates should be returned"));
+        context.assertTrue(highestCandidates.contains(highEntropyA), Text.literal("first highest candidate should be included"));
+        context.assertTrue(highestCandidates.contains(highEntropyB), Text.literal("second highest candidate should be included"));
+        context.assertFalse(highestCandidates.contains(lowEntropy), Text.literal("lower entropy candidate should be excluded"));
+        context.complete();
+    }
+
+    @GameTest
+    public void roundEntropyGainStaysWithinConfiguredBounds(TestContext context) {
+        Xoroshiro128PlusPlusRandom random = new Xoroshiro128PlusPlusRandom(12345L);
+        for (int i = 0; i < 64; i++) {
+            int gain = GameManager.calculateRoundEntropyGain(random, 10, 35);
+            context.assertTrue(gain >= 10 && gain <= 35, Text.literal("entropy gain should stay in configured range"));
+        }
+
+        int swappedBoundsGain = GameManager.calculateRoundEntropyGain(random, 35, 10);
+        context.assertTrue(swappedBoundsGain >= 10 && swappedBoundsGain <= 35, Text.literal("swapped min/max should be normalized"));
+        context.assertEquals(0, GameManager.calculateRoundEntropyGain(random, -5, 0), Text.literal("negative min should clamp to zero"));
+        context.complete();
+    }
+
+    @GameTest
+    public void entropyCandidateSelectionUsesDefaultForMissingEntropyEntries(TestContext context) {
+        UUID candidateA = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        UUID candidateB = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+        UUID candidateC = UUID.fromString("cccccccc-cccc-cccc-cccc-cccccccccccc");
+
+        List<UUID> highestCandidates = GameManager.collectHighestEntropyCandidates(
+                List.of(candidateA, candidateB, candidateC),
+                Map.of(
+                        candidateA, 80,
+                        candidateB, 120
+                ),
+                100
+        );
+
+        context.assertEquals(1, highestCandidates.size(), Text.literal("highest list should contain one candidate"));
+        context.assertTrue(highestCandidates.contains(candidateB), Text.literal("explicit highest entropy candidate should win"));
         context.complete();
     }
 

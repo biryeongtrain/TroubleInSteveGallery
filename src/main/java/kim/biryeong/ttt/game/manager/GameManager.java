@@ -400,6 +400,7 @@ public final class GameManager {
         for (UUID playerUuid : this.gameInstanceManager.getParticipants()) {
             applyRoundResult(playerUuid, innocentResult);
         }
+        applyRoundEntropyGrowth();
 
         this.gameDataManager.saveAll();
         this.gameDataManager.saveRoundData();
@@ -527,6 +528,8 @@ public final class GameManager {
             throw new IllegalStateException("Cannot start game without active players.");
         }
 
+        availablePlayers.forEach(player -> ensurePlayerEntropyInitialized(player.getUuid()));
+
         var seed = RandomSeed.createXoroshiroSeed(RandomSeed.getSeed());
         LOGGER.info("Selected random seed: {}", seed);
         Xoroshiro128PlusPlusRandom random = new Xoroshiro128PlusPlusRandom(seed);
@@ -587,12 +590,18 @@ public final class GameManager {
                 return;
             }
 
-            int randomIndex = random.nextInt(allParticipants.size());
-            UUID selectedUuid = allParticipants.remove(randomIndex);
+            UUID selectedUuid = selectHighestEntropyCandidate(allParticipants, random);
+            if (!allParticipants.remove(selectedUuid)) {
+                LOGGER.warn("Cannot remove selected {} candidate {} from participant pool.", role.asString(), selectedUuid);
+                continue;
+            }
             ServerPlayerEntity selectedPlayer = server.getPlayerManager().getPlayer(selectedUuid);
             if (selectedPlayer == null) {
                 continue;
             }
+
+            int entropyBeforeReset = getRoleEntropy(selectedUuid);
+            resetRoleEntropyInternal(selectedUuid);
 
             InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) selectedPlayer;
             info.tts$setRole(role);
@@ -601,7 +610,114 @@ public final class GameManager {
                     InGamePlayerInfoProvider.PointReason.ROLE_PLAYING
             );
             selectedNames.append(selectedPlayer.getGameProfile().getName()).append(", ");
+            LOGGER.info(
+                    "Selected {} ({}) as {} by entropy {}. Entropy reset to {}.",
+                    selectedPlayer.getGameProfile().getName(),
+                    selectedUuid,
+                    role.asString(),
+                    entropyBeforeReset,
+                    ROLE_ENTROPY_BASELINE
+            );
         }
+    }
+
+    private UUID selectHighestEntropyCandidate(List<UUID> candidates, Xoroshiro128PlusPlusRandom random) {
+        List<UUID> highestEntropyCandidates = collectHighestEntropyCandidates(
+                candidates,
+                buildEntropySnapshot(candidates),
+                ROLE_ENTROPY_BASELINE
+        );
+        if (highestEntropyCandidates.isEmpty()) {
+            return candidates.get(0);
+        }
+        return highestEntropyCandidates.get(random.nextInt(highestEntropyCandidates.size()));
+    }
+
+    private Map<UUID, Integer> buildEntropySnapshot(List<UUID> candidates) {
+        Map<UUID, Integer> entropyByUuid = new Object2ObjectOpenHashMap<>();
+        for (UUID candidateUuid : candidates) {
+            entropyByUuid.put(candidateUuid, getRoleEntropy(candidateUuid));
+        }
+        return entropyByUuid;
+    }
+
+    static List<UUID> collectHighestEntropyCandidates(
+            List<UUID> candidates,
+            Map<UUID, Integer> entropyByUuid,
+            int defaultEntropy
+    ) {
+        if (candidates.isEmpty()) {
+            return List.of();
+        }
+
+        int normalizedDefaultEntropy = Math.max(0, defaultEntropy);
+        int highestEntropy = Integer.MIN_VALUE;
+        List<UUID> highestCandidates = new ArrayList<>();
+        for (UUID candidate : candidates) {
+            int entropy = Math.max(0, entropyByUuid.getOrDefault(candidate, normalizedDefaultEntropy));
+            if (entropy > highestEntropy) {
+                highestEntropy = entropy;
+                highestCandidates.clear();
+                highestCandidates.add(candidate);
+                continue;
+            }
+
+            if (entropy == highestEntropy) {
+                highestCandidates.add(candidate);
+            }
+        }
+
+        return List.copyOf(highestCandidates);
+    }
+
+    private void applyRoundEntropyGrowth() {
+        Xoroshiro128PlusPlusRandom random = this.rand.get();
+        Config config = Config.getInstance();
+        int minGain = config.roleEntropyGainMin;
+        int maxGain = config.roleEntropyGainMax;
+        for (UUID participantUuid : Set.copyOf(this.gameInstanceManager.getParticipants())) {
+            ensurePlayerEntropyInitialized(participantUuid);
+            int gain = calculateRoundEntropyGain(random, minGain, maxGain);
+            int nextEntropy = addRoleEntropy(participantUuid, gain);
+            LOGGER.info("Round entropy increased for {} by {} => {}", participantUuid, gain, nextEntropy);
+        }
+    }
+
+    static int calculateRoundEntropyGain(
+            Xoroshiro128PlusPlusRandom random,
+            int minGain,
+            int maxGain
+    ) {
+        int normalizedMinGain = Math.max(0, Math.min(minGain, maxGain));
+        int normalizedMaxGain = Math.max(normalizedMinGain, Math.max(minGain, maxGain));
+        return normalizedMinGain + random.nextInt(normalizedMaxGain - normalizedMinGain + 1);
+    }
+
+    public int getRoleEntropy(UUID playerUuid) {
+        return Math.max(0, this.roleEntropyByUuid.getInt(playerUuid));
+    }
+
+    public int getRoleEntropy(ServerPlayerEntity player) {
+        return getRoleEntropy(player.getUuid());
+    }
+
+    public void resetRoleEntropy(UUID playerUuid) {
+        resetRoleEntropyInternal(playerUuid);
+    }
+
+    public void resetRoleEntropy(ServerPlayerEntity player) {
+        resetRoleEntropyInternal(player.getUuid());
+    }
+
+    private int addRoleEntropy(UUID playerUuid, int amount) {
+        int normalizedAmount = Math.max(0, amount);
+        int nextEntropy = getRoleEntropy(playerUuid) + normalizedAmount;
+        this.roleEntropyByUuid.put(playerUuid, nextEntropy);
+        return nextEntropy;
+    }
+
+    private void resetRoleEntropyInternal(UUID playerUuid) {
+        this.roleEntropyByUuid.put(playerUuid, ROLE_ENTROPY_BASELINE);
     }
 
     private static List<UUID> extractPlayerUuids(List<ServerPlayerEntity> players) {
@@ -618,8 +734,21 @@ public final class GameManager {
             LOGGER.info("Player {} is not loaded. Creating new data...", player.getGameProfile().getName());
             this.gameDataManager.createNewData(player.getUuid());
         }
+        ensurePlayerEntropyInitialized(player.getUuid());
         sendFirstJoinWelcomeMessage(player);
         this.gameInstanceManager.onAudienceChanged();
+    }
+
+    private void ensurePlayerEntropyInitialized(UUID playerUuid) {
+        if (!this.roleEntropyByUuid.containsKey(playerUuid)) {
+            this.roleEntropyByUuid.put(playerUuid, ROLE_ENTROPY_BASELINE);
+            return;
+        }
+
+        int entropy = getRoleEntropy(playerUuid);
+        if (entropy < ROLE_ENTROPY_BASELINE) {
+            this.roleEntropyByUuid.put(playerUuid, ROLE_ENTROPY_BASELINE);
+        }
     }
 
     private static void sendFirstJoinWelcomeMessage(ServerPlayerEntity player) {
