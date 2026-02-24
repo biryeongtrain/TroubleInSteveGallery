@@ -17,8 +17,8 @@ import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.item.ModItems;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
-import kim.biryeong.ttt.ui.dialog.log.DeathCombatLogDialog;
 import kim.biryeong.ttt.ui.sidebar.CorpseSidebar;
+import kim.biryeong.ttt.util.AvatarTextRenderer;
 import net.kyori.adventure.platform.modcommon.impl.WrappedComponent;
 import net.minecraft.entity.*;
 import net.minecraft.entity.attribute.DefaultAttributeContainer;
@@ -145,9 +145,9 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
 
 
             serverPlayer.getServer().getPlayerManager().broadcast(Text.literal("\n[사망 알림!] ").styled(style -> style.withColor(Formatting.YELLOW))
-                    .append(DeathCombatLogDialog.resolveSmallAvatar(serverPlayer.getUuid(), serverPlayer.getNameForScoreboard(), false))
+                    .append(AvatarTextRenderer.resolveSmallAvatar(serverPlayer.getUuid(), serverPlayer.getNameForScoreboard(), false))
                     .append(byMiniMessage(" <yellow>%s</yellow><white>님이 ".formatted(serverPlayer.getNameForScoreboard())))
-                    .append(DeathCombatLogDialog.resolveSmallAvatar(deadPlayer.getUuid(), deadPlayer.getNameForScoreboard(), false))
+                    .append(AvatarTextRenderer.resolveSmallAvatar(deadPlayer.getUuid(), deadPlayer.getNameForScoreboard(), false))
                     .append(byMiniMessage(" <red>%s</red><white>님의 시체를 찾았습니다.".formatted(deadPlayer.getNameForScoreboard())))
                     .append(byMiniMessage(" 그는 <#color>%s</#color><white> 이었습니다.\n"
                             .formatted(playerRole.krRoleName)

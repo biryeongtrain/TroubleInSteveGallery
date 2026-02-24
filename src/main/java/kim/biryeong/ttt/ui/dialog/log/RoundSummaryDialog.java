@@ -3,6 +3,7 @@ package kim.biryeong.ttt.ui.dialog.log;
 import de.tomalbrc.dialogutils.DialogUtils;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.ui.dialog.TTTDialogs;
+import kim.biryeong.ttt.util.AvatarTextRenderer;
 import net.minecraft.dialog.AfterAction;
 import net.minecraft.dialog.DialogActionButtonData;
 import net.minecraft.dialog.DialogButtonData;
@@ -125,7 +126,7 @@ public class RoundSummaryDialog {
     }
 
     private static PlainMessageDialogBody buildTraitorAvatarBody(RoundSummaryTraitorEntry traitorEntry) {
-        Text avatar = DeathCombatLogDialog.resolveSmallAvatar(
+        Text avatar = AvatarTextRenderer.resolveSmallAvatar(
                 traitorEntry.uuid(),
                 traitorEntry.name(),
                 false

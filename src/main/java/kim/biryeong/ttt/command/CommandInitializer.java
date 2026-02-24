@@ -16,8 +16,9 @@ import kim.biryeong.ttt.game.data.PlayerDataInstance;
 import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
-import kim.biryeong.ttt.ui.dialog.log.DeathCombatLogDialog;
 import kim.biryeong.ttt.ui.dialog.guide.GuideListDialog;
+import kim.biryeong.ttt.ui.dialog.log.PlayerStatisticsDialog;
+import kim.biryeong.ttt.util.AvatarTextRenderer;
 import kim.biryeong.ttt.util.DebugFakePlayerRegistry;
 import kim.biryeong.ttt.util.KoreanKeyboardConverter;
 import kim.biryeong.ttt.util.Scheduler;
@@ -894,12 +895,12 @@ public class CommandInitializer {
             return 0;
         }
 
-        Text senderAvatar = DeathCombatLogDialog.resolveSmallAvatar(
+        Text senderAvatar = AvatarTextRenderer.resolveSmallAvatar(
                 sender.getUuid(),
                 sender.getGameProfile().getName(),
                 false
         );
-        Text targetAvatar = DeathCombatLogDialog.resolveSmallAvatar(
+        Text targetAvatar = AvatarTextRenderer.resolveSmallAvatar(
                 target.getUuid(),
                 target.getGameProfile().getName(),
                 false
