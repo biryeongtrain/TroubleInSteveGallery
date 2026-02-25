@@ -2,6 +2,8 @@ package kim.biryeong.ttt.world;
 
 import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.world.gen.TemplateChunkGenerator;
+import net.minecraft.entity.Entity;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -11,6 +13,7 @@ import net.minecraft.util.math.random.Xoroshiro128PlusPlusRandom;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.GameRules;
 import net.minecraft.world.TeleportTarget;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import xyz.nucleoid.map_templates.BlockBounds;
@@ -21,20 +24,29 @@ import xyz.nucleoid.fantasy.util.GameRuleStore;
 import xyz.nucleoid.map_templates.MapTemplate;
 import xyz.nucleoid.map_templates.TemplateRegion;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class TTTMap {
+    private static final int PORTAL_COOLDOWN_TICKS = 10;
+    private static final String PORTAL_MARKER = "portal";
+    private static final String REGION_ID_KEY = "id";
+    private static final String PORTAL_DEST_KEY = "dest";
     private static final Logger LOGGER = LoggerFactory.getLogger("TTT_Map");
     private final MapTemplate template;
     private final List<TemplateRegion> spawns;
+    private final List<PortalRoute> portalRoutes;
     private final Identifier instanceId;
     private ServerWorld world;
     private RuntimeWorldHandle handle;
 
     public TTTMap(Identifier id, MapTemplate template) {
         this.template = template;
-        this.spawns = template.getMetadata().getRegions("spawn").toList();
         this.instanceId = id;
+        this.spawns = template.getMetadata().getRegions("spawn").toList();
+        this.portalRoutes = buildPortalRoutes(template);
         if (this.spawns.isEmpty()) {
             throw new IllegalStateException("No spawn region found.");
         }
@@ -87,6 +99,23 @@ public class TTTMap {
         }
     }
 
+    public void tickPortals() {
+        if (this.world == null || this.portalRoutes.isEmpty()) {
+            return;
+        }
+
+        for (PortalRoute route : this.portalRoutes) {
+            Vec3d destination = route.destinationBounds().centerBottom().add(0.0, 0.5, 0.0);
+            for (Entity entity : this.world.getEntitiesByClass(
+                    Entity.class,
+                    route.sourceBounds().asBox(),
+                    TTTMap::isPortalTeleportCandidate
+            )) {
+                teleportThroughPortal(entity, destination);
+            }
+        }
+    }
+
     public void closeMap() {
         if (this.handle == null || this.world == null) {
             return;
@@ -116,5 +145,99 @@ public class TTTMap {
 //        player.requestTeleportAndDismount(location.getX(), location.getY(), location.getZ());
         player.teleportTo(new TeleportTarget(this.world, location.toCenterPos().add(0, 0.5, 0), Vec3d.ZERO, player.getYaw(), player.getPitch(), TeleportTarget.NO_OP));
 
+    }
+
+    private void teleportThroughPortal(Entity entity, Vec3d destination) {
+        entity.teleportTo(new TeleportTarget(
+                this.world,
+                destination,
+                entity.getVelocity(),
+                entity.getYaw(),
+                entity.getPitch(),
+                TeleportTarget.NO_OP
+        ));
+        // Avoid immediate bounce loops when source/destination portals are adjacent.
+        entity.setPortalCooldown(PORTAL_COOLDOWN_TICKS);
+    }
+
+    private static boolean isPortalTeleportCandidate(Entity entity) {
+        return !entity.isRemoved() && entity.isAlive() && !entity.hasPortalCooldown();
+    }
+
+    private List<PortalRoute> buildPortalRoutes(MapTemplate mapTemplate) {
+        List<TemplateRegion> portals = mapTemplate.getMetadata().getRegions(PORTAL_MARKER).toList();
+        if (portals.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, TemplateRegion> regionsById = new HashMap<>();
+        for (TemplateRegion region : mapTemplate.getMetadata().getRegions()) {
+            String regionId = readRegionString(region, REGION_ID_KEY);
+            if (regionId == null) {
+                continue;
+            }
+
+            TemplateRegion previous = regionsById.putIfAbsent(regionId, region);
+            if (previous != null) {
+                LOGGER.warn(
+                        "Duplicate region id '{}' found while loading map '{}'. Using first region. first={}, duplicate={}",
+                        regionId,
+                        this.instanceId,
+                        previous.getBounds(),
+                        region.getBounds()
+                );
+            }
+        }
+
+        List<PortalRoute> routes = new ArrayList<>();
+        for (TemplateRegion portal : portals) {
+            String destinationId = readRegionString(portal, PORTAL_DEST_KEY);
+            if (destinationId == null) {
+                LOGGER.warn(
+                        "Skipping portal in map '{}': missing '{}' key at bounds={}",
+                        this.instanceId,
+                        PORTAL_DEST_KEY,
+                        portal.getBounds()
+                );
+                continue;
+            }
+
+            TemplateRegion destinationRegion = regionsById.get(destinationId);
+            if (destinationRegion == null) {
+                destinationRegion = mapTemplate.getMetadata().getFirstRegion(destinationId);
+            }
+            if (destinationRegion == null) {
+                LOGGER.warn(
+                        "Skipping portal in map '{}': destination region '{}' not found for portal bounds={}",
+                        this.instanceId,
+                        destinationId,
+                        portal.getBounds()
+                );
+                continue;
+            }
+
+            routes.add(new PortalRoute(portal.getBounds(), destinationRegion.getBounds()));
+        }
+
+        if (!routes.isEmpty()) {
+            LOGGER.info("Loaded {} portal route(s) for map '{}'.", routes.size(), this.instanceId);
+        }
+
+        return List.copyOf(routes);
+    }
+
+    private static @Nullable String readRegionString(TemplateRegion region, String key) {
+        NbtCompound data = region.getData();
+        if (data == null) {
+            return null;
+        }
+
+        return data.getString(key)
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .orElse(null);
+    }
+
+    private record PortalRoute(BlockBounds sourceBounds, BlockBounds destinationBounds) {
     }
 }

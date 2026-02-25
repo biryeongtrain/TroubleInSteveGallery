@@ -9,6 +9,7 @@ import kim.biryeong.ttt.ui.gui.ShopGUI;
 import kim.biryeong.ttt.util.KoreanKeyboardConverter;
 import kim.biryeong.ttt.util.NonThrowable;
 import kim.biryeong.ttt.util.Scheduler;
+import kim.biryeong.ttt.world.TTTMap;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -173,6 +174,10 @@ public final class Events {
             GameManager manager = GameManager.getInstance();
             manager.tickLobbyBgm();
             manager.tickGuideHints();
+            TTTMap activeMap = manager.resolveJoinMap();
+            if (activeMap != null) {
+                activeMap.tickPortals();
+            }
             if (manager.getCurrentPhase().isInProgress()) {
                 manager.tick();
             }
