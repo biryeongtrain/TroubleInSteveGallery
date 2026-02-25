@@ -22,21 +22,21 @@ public class ItemLoadouts {
                 Identifier.of("ttt:long_ranged"),
                 byMiniMessage("프리셋 1"),
                 List.of(byMiniMessage("길고 강하지만 공격 속도가 낮은 무기를 지급받습니다.")),
-                List.of(ModItems.LONG_RANGED_SWORD.getDefaultStack(), Items.BOW.getDefaultStack())
+                List.of(ModItems.LONG_RANGED_SWORD.getDefaultStack(), Items.BOW.getDefaultStack(), Items.SPYGLASS.getDefaultStack(), Items.LEAD.getDefaultStack().copyWithCount(5))
         );
 
         register(
                 DEFAULT_LOADOUT_KEY,
                 byMiniMessage("프리셋 2"),
                 List.of(byMiniMessage("균형 잡힌 성능의 무기를 지급받습니다.")),
-                List.of(ModItems.NORMAL_SWORD.getDefaultStack(), Items.BOW.getDefaultStack())
+                List.of(ModItems.NORMAL_SWORD.getDefaultStack(), Items.BOW.getDefaultStack(), Items.SPYGLASS.getDefaultStack(), Items.LEAD.getDefaultStack().copyWithCount(5))
         );
 
         register(
                 Identifier.of("ttt:dagger"),
                 byMiniMessage("프리셋 3"),
                 List.of(byMiniMessage("짧지만 빠른 공격 속도의 무기를 지급받습니다.")),
-                List.of(ModItems.DAGGER.getDefaultStack(), Items.BOW.getDefaultStack())
+                List.of(ModItems.DAGGER.getDefaultStack(), Items.BOW.getDefaultStack(), Items.SPYGLASS.getDefaultStack(), Items.LEAD.getDefaultStack().copyWithCount(5))
         );
     }
 

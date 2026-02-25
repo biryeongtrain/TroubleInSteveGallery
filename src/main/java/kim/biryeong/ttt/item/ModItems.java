@@ -67,8 +67,9 @@ public class ModItems {
                     .maxDamage(1)
                     .component(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, true)
                     .attributeModifiers(AttributeModifiersComponent.builder()
-                            .add(EntityAttributes.ATTACK_DAMAGE, new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID,1557, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
-                    .build())
+                            .add(EntityAttributes.ATTACK_DAMAGE, new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID, 1556, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
+                            .add(EntityAttributes.ENTITY_INTERACTION_RANGE, new EntityAttributeModifier(Identifier.ofVanilla("default"), -1, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
+                            .build())
     );
 
     public static final Item TELEPORTER = register("teleporter", TeleporterItem::new,
@@ -80,22 +81,24 @@ public class ModItems {
     );
 
 
-    public static final Item LONG_RANGED_SWORD = register("long_ranged_sword", settings ->  new SimplePolymerItem(settings, Items.IRON_AXE, false),
+    public static final Item LONG_RANGED_SWORD = register("long_ranged_sword", settings -> new SimplePolymerItem(settings, Items.IRON_AXE, false),
             new Item.Settings().maxCount(1)
                     .sword(ToolMaterial.NETHERITE, 0, -2.8f)
                     .attributeModifiers(AttributeModifiersComponent.builder()
                             .add(EntityAttributes.ATTACK_DAMAGE, new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID, 16, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
-                            .add(EntityAttributes.ENTITY_INTERACTION_RANGE, new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID, 4, EntityAttributeModifier.Operation.ADD_MULTIPLIED_BASE), AttributeModifierSlot.HAND)
+                            .add(EntityAttributes.ATTACK_SPEED, new EntityAttributeModifier(Item.BASE_ATTACK_SPEED_MODIFIER_ID, -3.2, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
+                            .add(EntityAttributes.ENTITY_INTERACTION_RANGE, new EntityAttributeModifier(Identifier.ofVanilla("default"), 1, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
                             .build()
                     )
     );
 
-    public static final Item DAGGER = register("dagger", settings -> new SimplePolymerItem(settings, Items.IRON_SWORD, true),
+    public static final Item DAGGER = register("dagger", settings -> new SimplePolymerItem(settings, Items.IRON_HOE, false),
             new Item.Settings().maxCount(1)
                     .sword(ToolMaterial.NETHERITE, 0, -1.6f)
                     .attributeModifiers(AttributeModifiersComponent.builder()
                             .add(EntityAttributes.ATTACK_DAMAGE, new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID, 14, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
-                            .add(EntityAttributes.ENTITY_INTERACTION_RANGE, new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID, -2f, EntityAttributeModifier.Operation.ADD_MULTIPLIED_BASE), AttributeModifierSlot.HAND)
+                            .add(EntityAttributes.ATTACK_SPEED, new EntityAttributeModifier(Item.BASE_ATTACK_SPEED_MODIFIER_ID, -2f, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
+                            .add(EntityAttributes.ENTITY_INTERACTION_RANGE, new EntityAttributeModifier(Identifier.ofVanilla("default"), -1, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
                             .build()
                     )
     );
@@ -104,7 +107,7 @@ public class ModItems {
             new Item.Settings().maxCount(1)
                     .sword(ToolMaterial.NETHERITE, 0, -2.6f)
                     .attributeModifiers(AttributeModifiersComponent.builder()
-                            .add(EntityAttributes.ATTACK_DAMAGE, new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID, 16, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
+                            .add(EntityAttributes.ATTACK_DAMAGE, new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID, 18, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
                             .add(EntityAttributes.ATTACK_SPEED, new EntityAttributeModifier(Item.BASE_ATTACK_SPEED_MODIFIER_ID, -2.4f, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
                             .build())
     );
