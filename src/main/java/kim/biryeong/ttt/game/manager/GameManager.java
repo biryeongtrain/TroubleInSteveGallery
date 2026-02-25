@@ -159,7 +159,7 @@ public final class GameManager {
 
     public ServerWorld getSpawnWorld() {
         if (this.spawnMap.getWorld() == null) {
-            this.spawnMap.generateWorld(server, true);
+            this.spawnMap.generateWorld(server);
         }
 
         return this.spawnMap.getWorld();
@@ -230,11 +230,15 @@ public final class GameManager {
 
     private void ensureCurrentMapReady(@Nullable Identifier requestedMapId) {
         Identifier mapId = resolveNextRoundMapId(requestedMapId);
+        if (this.currentMap != null && !mapId.equals(this.currentMap.getId())) {
+            this.currentMap.closeMap();
+        }
+
         if (this.currentMap == null || !mapId.equals(this.currentMap.getId())) {
             this.currentMap = this.loadMap(mapId);
         }
         if (this.currentMap.getWorld() == null) {
-            this.currentMap.generateWorld(server, true);
+            this.currentMap.generateWorld(server);
         }
     }
 
@@ -413,6 +417,7 @@ public final class GameManager {
         sendMessage("<green>라운드 결과 저장이 완료되었습니다.</green>");
         this.currentPhase.set(Phase.NOT_STARTED);
         restoreAllPlayersToLobby();
+        closeCurrentRoundMap();
         scheduleRoundSummaryDialogs(roundSummarySnapshot);
     }
 
@@ -493,6 +498,14 @@ public final class GameManager {
             }
         }
         this.spawnMap.spreadPlayers(players);
+    }
+
+    private void closeCurrentRoundMap() {
+        if (this.currentMap == null) {
+            return;
+        }
+
+        this.currentMap.closeMap();
     }
 
     private void scheduleRoundSummaryDialogs(GameDataManager.RoundSummarySnapshot roundSummarySnapshot) {

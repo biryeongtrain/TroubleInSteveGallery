@@ -21,7 +21,6 @@ import xyz.nucleoid.fantasy.util.GameRuleStore;
 import xyz.nucleoid.map_templates.MapTemplate;
 import xyz.nucleoid.map_templates.TemplateRegion;
 
-import java.io.IOException;
 import java.util.List;
 
 public class TTTMap {
@@ -42,7 +41,7 @@ public class TTTMap {
 
     }
 
-    public void generateWorld(MinecraftServer server, boolean persistent) {
+    public void generateWorld(MinecraftServer server) {
         RuntimeWorldConfig config = new RuntimeWorldConfig()
                 .setGenerator(new TemplateChunkGenerator(server, this.template))
                 .setDifficulty(Difficulty.PEACEFUL);
@@ -64,8 +63,7 @@ public class TTTMap {
         setDefaultRule(gameRules, GameRules.DO_TRADER_SPAWNING, false);
 
 
-        this.handle = persistent ? Fantasy.get(server).getOrOpenPersistentWorld(instanceId, config) :
-                Fantasy.get(server).openTemporaryWorld(config);
+        this.handle = Fantasy.get(server).openTemporaryWorld(config);
         this.world = handle.asWorld();
 
         GameManager.getInstance().sendMessage("월드 준비 완료. 로드된 맵 : <green>%s</green>".formatted(instanceId.toString()));
@@ -89,9 +87,14 @@ public class TTTMap {
         }
     }
 
-    public void closeMap(MinecraftServer server) {
-        Fantasy fantasy = Fantasy.get(server);
-        fantasy.tickUnloadWorld(world);
+    public void closeMap() {
+        if (this.handle == null || this.world == null) {
+            return;
+        }
+
+        this.handle.unload();
+        this.handle = null;
+        this.world = null;
     }
 
     private static void setDefaultRule(GameRuleStore rules, GameRules.Key<GameRules.BooleanRule> key, boolean value) {
@@ -101,13 +104,17 @@ public class TTTMap {
     }
 
     public void spawnPlayer(ServerPlayerEntity player) {
+        if (this.world == null) {
+            throw new IllegalStateException("Map world is not generated yet: " + this.instanceId);
+        }
+
         Xoroshiro128PlusPlusRandom random = GameManager.getInstance().getRandom();
         int index = random.nextInt(spawns.size());
         var location = this.spawns.get(index).getBounds().sampleBlock(random);
 //        player.setServerWorld(this.world);
 //        player.teleportTo
 //        player.requestTeleportAndDismount(location.getX(), location.getY(), location.getZ());
-        player.teleportTo(new TeleportTarget(this.handle.asWorld(), location.toCenterPos().add(0, 0.5, 0), Vec3d.ZERO, player.getYaw(), player.getPitch(), TeleportTarget.NO_OP));
+        player.teleportTo(new TeleportTarget(this.world, location.toCenterPos().add(0, 0.5, 0), Vec3d.ZERO, player.getYaw(), player.getPitch(), TeleportTarget.NO_OP));
 
     }
 }
