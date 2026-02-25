@@ -189,7 +189,7 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
                 player,
                 pos,
                 world,
-                3f
+                7f
         );
         explosion.explode();
         this.tts$applyExplosionDamageFallback(player, world, pos, source, explosion.getPower());
