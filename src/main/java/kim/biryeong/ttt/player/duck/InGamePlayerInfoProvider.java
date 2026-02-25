@@ -20,6 +20,10 @@ public interface InGamePlayerInfoProvider {
     void tts$setDenyToPlay(boolean denyToPlay);
     void tts$setTipsEnabled(boolean enabled);
     void tts$setBgmEnabled(boolean enabled);
+    /**
+     * Updates the currently selected item loadout for this player.
+     */
+    void tts$setItemLoadout(ItemLoadout loadout);
     void tts$addPoints(int points, PointReason reason);
     void tts$clearPoints();
     boolean tts$isAlive();

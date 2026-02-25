@@ -90,6 +90,15 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
     }
 
     @Override
+    public void tts$setItemLoadout(ItemLoadout loadout) {
+        if (loadout == null) {
+            this.tts$loadout = ItemLoadouts.get(ItemLoadouts.DEFAULT_LOADOUT_KEY);
+            return;
+        }
+        this.tts$loadout = ItemLoadouts.get(loadout.loadoutId());
+    }
+
+    @Override
     public void tts$addPoints(int points, PointReason reason) {
         GameManager.getInstance().addPoint(((ServerPlayerEntity) (Object) this).getUuid(), points);
     }

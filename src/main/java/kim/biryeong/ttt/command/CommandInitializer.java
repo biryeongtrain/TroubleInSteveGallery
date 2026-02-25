@@ -14,9 +14,12 @@ import kim.biryeong.ttt.TroubleInTerroristTownMod;
 import kim.biryeong.ttt.config.Config;
 import kim.biryeong.ttt.game.data.PlayerDataInstance;
 import kim.biryeong.ttt.game.manager.GameManager;
+import kim.biryeong.ttt.player.ItemLoadout;
+import kim.biryeong.ttt.player.ItemLoadouts;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.ui.dialog.guide.GuideListDialog;
+import kim.biryeong.ttt.ui.dialog.loadout.ItemLoadoutDialog;
 import kim.biryeong.ttt.ui.dialog.log.PlayerStatisticsDialog;
 import kim.biryeong.ttt.util.AvatarTextRenderer;
 import kim.biryeong.ttt.util.DebugFakePlayerRegistry;
@@ -47,6 +50,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -240,6 +244,24 @@ public class CommandInitializer {
                                 EntityArgumentType.getPlayer(ctx, "player")
                         )))
                 .build();
+        SuggestionProvider<ServerCommandSource> loadoutIdSuggester = (ctx, builder) ->
+                CommandSource.suggestIdentifiers(
+                        ItemLoadouts.getLoadouts().stream()
+                                .map(ItemLoadout::loadoutId)
+                                .sorted(Comparator.comparing(Identifier::toString))
+                                .toList(),
+                        builder
+                );
+        LiteralCommandNode<ServerCommandSource> loadout = CommandManager.literal("loadout")
+                .executes(ctx -> openLoadoutDialog(ctx.getSource()))
+                .then(CommandManager.literal("set")
+                        .then(CommandManager.argument("id", IdentifierArgumentType.identifier())
+                                .suggests(loadoutIdSuggester)
+                                .executes(ctx -> setLoadout(
+                                        ctx.getSource(),
+                                        IdentifierArgumentType.getIdentifier(ctx, "id")
+                                ))))
+                .build();
         LiteralCommandNode<ServerCommandSource> traitorChat = CommandManager.literal("tc")
                 .then(CommandManager.argument("message", StringArgumentType.greedyString())
                         .executes(ctx -> executeTraitorChat(
@@ -318,6 +340,7 @@ public class CommandInitializer {
         userRoot.addChild(guide);
         userRoot.addChild(accuse);
         userRoot.addChild(stats);
+        userRoot.addChild(loadout);
 
         debugNode.addChild(createExplosion);
         debugNode.addChild(enableDebugMode);
@@ -790,6 +813,51 @@ public class CommandInitializer {
         info.tts$setBgmEnabled(enabled);
         source.sendFeedback(
                 () -> Text.literal("Lobby BGM is now " + (enabled ? "enabled." : "disabled.")),
+                false
+        );
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int openLoadoutDialog(ServerCommandSource source) {
+        if (!source.isExecutedByPlayer()) {
+            source.sendError(Text.literal("이 명령어는 플레이어만 실행할 수 있습니다."));
+            return 0;
+        }
+
+        ServerPlayerEntity player = source.getPlayer();
+        if (player == null) {
+            source.sendError(Text.literal("이 명령어는 플레이어만 실행할 수 있습니다."));
+            return 0;
+        }
+
+        return ItemLoadoutDialog.show(player);
+    }
+
+    private static int setLoadout(ServerCommandSource source, Identifier loadoutId) {
+        if (!source.isExecutedByPlayer()) {
+            source.sendError(Text.literal("콘솔에서는 /tts loadout set <id> 를 사용할 수 없습니다."));
+            return 0;
+        }
+
+        ServerPlayerEntity player = source.getPlayer();
+        if (player == null) {
+            source.sendError(Text.literal("이 명령어는 플레이어만 실행할 수 있습니다."));
+            return 0;
+        }
+
+        if (!ItemLoadouts.LOADOUTS.containsKey(loadoutId)) {
+            source.sendError(Text.literal("알 수 없는 로드아웃입니다: " + loadoutId));
+            return 0;
+        }
+
+        InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
+        ItemLoadout selectedLoadout = ItemLoadouts.get(loadoutId);
+        info.tts$setItemLoadout(selectedLoadout);
+        source.sendFeedback(
+                () -> Text.empty()
+                        .append(Text.literal("로드아웃을 "))
+                        .append(selectedLoadout.displayName().copy().formatted(Formatting.GOLD))
+                        .append(Text.literal(" 으로 설정했습니다.")),
                 false
         );
         return Command.SINGLE_SUCCESS;

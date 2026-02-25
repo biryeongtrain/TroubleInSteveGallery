@@ -65,6 +65,12 @@ If the field is missing, built-in defaults are used.
   - Includes kill/death, accusation hit rate, team-kill rate, and role-play counts.
 - `/tts stats <player>`
   - Opens a stats dialog for the specified online player.
+- `/tts loadout`
+  - Opens the loadout selection dialog.
+  - Each preset is rendered as an item-aligned body with representative item + description.
+- `/tts loadout set <id>`
+  - Selects a specific loadout id directly.
+  - Primarily used by dialog action buttons.
 - `/t <target>`
   - Shortcut alias for `/tts accuse <target>`.
 - `/tc <message>`
@@ -153,5 +159,6 @@ Body rules:
 
 Player settings are persisted in custom data keys:
 
+- `tts$loadout`
 - `tts$tips_enabled`
 - `tts$bgm_enabled`

@@ -40,6 +40,11 @@ public class TTTDialogs {
         return Identifier.of(TroubleInTerroristTownMod.MOD_ID, "player_stats_" + playerKey);
     }
 
+    public static Identifier loadoutDialogId(ServerPlayerEntity player) {
+        String playerKey = player.getUuidAsString().replace("-", "");
+        return Identifier.of(TroubleInTerroristTownMod.MOD_ID, "loadout_" + playerKey);
+    }
+
     public static Identifier guideListId() {
         return Identifier.of(TroubleInTerroristTownMod.MOD_ID, "guide_list");
     }
