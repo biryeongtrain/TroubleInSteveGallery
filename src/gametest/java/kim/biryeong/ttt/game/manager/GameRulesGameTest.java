@@ -19,14 +19,14 @@ public final class GameRulesGameTest {
     @GameTest
     public void roleDistributionMatchesExpectedRules(TestContext context) {
         context.assertEquals(0, GameManager.calculateDetectiveCount(0), Text.literal("detectives for 0 players"));
-        context.assertEquals(0, GameManager.calculateDetectiveCount(7), Text.literal("detectives for 7 players"));
+        context.assertEquals(1, GameManager.calculateDetectiveCount(7), Text.literal("detectives for 7 players"));
         context.assertEquals(1, GameManager.calculateDetectiveCount(8), Text.literal("detectives for 8 players"));
         context.assertEquals(2, GameManager.calculateDetectiveCount(16), Text.literal("detectives for 16 players"));
 
         context.assertEquals(0, GameManager.calculateTraitorCount(0), Text.literal("traitors for 0 players"));
         context.assertEquals(1, GameManager.calculateTraitorCount(4), Text.literal("traitors for 4 players"));
         context.assertEquals(2, GameManager.calculateTraitorCount(8), Text.literal("traitors for 8 players"));
-        context.assertEquals(3, GameManager.calculateTraitorCount(12), Text.literal("traitors for 12 players"));
+        context.assertEquals(4, GameManager.calculateTraitorCount(12), Text.literal("traitors for 12 players"));
         context.complete();
     }
 

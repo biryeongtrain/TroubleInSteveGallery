@@ -565,14 +565,14 @@ public final class GameManager {
         if (playerCount <= 0) {
             return 0;
         }
-        return playerCount / 8;
+        return playerCount / 6;
     }
 
     static int calculateTraitorCount(int playerCount) {
         if (playerCount <= 0) {
             return 0;
         }
-        return Math.max(playerCount / 4, 1);
+        return Math.max(playerCount / 3, 1);
     }
 
     private void selectRoles(
