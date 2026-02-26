@@ -1,10 +1,14 @@
 package kim.biryeong.ttt.game.manager;
 
 import kim.biryeong.ttt.game.data.PlayerDataInstance;
+import kim.biryeong.ttt.item.ModItems;
+import kim.biryeong.ttt.player.ItemLoadout;
+import kim.biryeong.ttt.player.ItemLoadouts;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.ui.dialog.log.RoundSummaryDialog;
 import kim.biryeong.ttt.util.Sounds;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.item.ItemStack;
 import net.minecraft.test.TestContext;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
@@ -596,6 +600,33 @@ public final class GameRulesGameTest {
                 GameMode.SPECTATOR,
                 GameManager.resolveRoundStartGameMode(true),
                 Text.literal("spectator opt-in players should start in spectator mode")
+        );
+        context.complete();
+    }
+
+    @GameTest
+    public void roundStarterItemsFollowSelectedLoadoutWithFallback(TestContext context) {
+        ItemLoadout selectedLoadout = ItemLoadouts.get(Identifier.of("ttt", "long_ranged"));
+        List<ItemStack> selectedItems = GameManager.resolveRoundStarterItems(selectedLoadout);
+        context.assertEquals(
+                selectedLoadout.items().size(),
+                selectedItems.size(),
+                Text.literal("selected loadout item count should be preserved")
+        );
+        context.assertTrue(
+                selectedItems.get(0).isOf(ModItems.LONG_RANGED_SWORD),
+                Text.literal("selected loadout should include long ranged sword as first item")
+        );
+
+        List<ItemStack> fallbackItems = GameManager.resolveRoundStarterItems(null);
+        context.assertEquals(
+                4,
+                fallbackItems.size(),
+                Text.literal("fallback starter items should contain four items")
+        );
+        context.assertTrue(
+                fallbackItems.get(0).isOf(ModItems.NORMAL_SWORD),
+                Text.literal("fallback starter items should include normal sword as first item")
         );
         context.complete();
     }
