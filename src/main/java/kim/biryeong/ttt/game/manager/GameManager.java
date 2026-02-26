@@ -8,6 +8,7 @@ import kim.biryeong.ttt.config.Config;
 import kim.biryeong.ttt.game.data.PlayerDataInstance;
 import kim.biryeong.ttt.game.data.PlayerRoundDataInstance;
 import kim.biryeong.ttt.item.ModItems;
+import kim.biryeong.ttt.player.ItemLoadout;
 import kim.biryeong.ttt.player.duck.InGameEventProvider;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
@@ -355,9 +356,17 @@ public final class GameManager {
 
     private static void giveRoundStarterItems(ServerPlayerEntity player) {
         player.getInventory().clear();
-        createRoundStarterItems().stream()
+        InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
+        resolveRoundStarterItems(info.tts$getItemLoadout()).stream()
                 .map(ItemStack::copy)
                 .forEach(player::giveItemStack);
+    }
+
+    static List<ItemStack> resolveRoundStarterItems(@Nullable ItemLoadout selectedLoadout) {
+        if (selectedLoadout == null || selectedLoadout.items().isEmpty()) {
+            return createRoundStarterItems();
+        }
+        return selectedLoadout.items();
     }
 
     static List<ItemStack> createRoundStarterItems() {
