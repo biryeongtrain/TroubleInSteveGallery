@@ -7,6 +7,7 @@ import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.ui.gui.ShopGUI;
 import kim.biryeong.ttt.util.KoreanKeyboardConverter;
+import kim.biryeong.ttt.util.MinimapClientModPacketDetector;
 import kim.biryeong.ttt.util.NonThrowable;
 import kim.biryeong.ttt.util.Scheduler;
 import kim.biryeong.ttt.world.TTTMap;
@@ -29,6 +30,7 @@ import xyz.nucleoid.stimuli.event.player.PlayerConsumeHungerEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerDamageEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerRegenerateEvent;
+import xyz.nucleoid.stimuli.event.player.PlayerC2SPacketEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerSwapWithOffhandEvent;
 
 public final class Events {
@@ -39,6 +41,7 @@ public final class Events {
     public static void registerEvents() {
         registerItemEvents();
         registerConnectionEvents();
+        registerPacketEvents();
         registerCombatEvents();
         registerEntityRules();
         registerPlayerStateEvents();
@@ -69,9 +72,17 @@ public final class Events {
             }, 1);
         });
 
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
-                GameManager.getInstance().onPlayerLeft(handler.player)
-        );
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            MinimapClientModPacketDetector.onPlayerDisconnected(handler.player);
+            GameManager.getInstance().onPlayerLeft(handler.player);
+        });
+    }
+
+    private static void registerPacketEvents() {
+        Stimuli.global().listen(PlayerC2SPacketEvent.EVENT, (player, packet) -> {
+            MinimapClientModPacketDetector.onPlayerPacket(player, packet);
+            return EventResult.PASS;
+        });
     }
 
     private static void registerCombatEvents() {

@@ -60,7 +60,6 @@ public class TroubleInTerroristTownMod implements ModInitializer {
 		Registry.register(Registries.DIALOG_BODY_TYPE, Identifier.of("ttt", "header_message"), HeaderMessage.MAP_CODEC);
 		Registry.register(Registries.DIALOG_BODY_TYPE, Identifier.of("ttt", "image"), ImageBody.MAP_CODEC);
 		ServerLifecycleEvents.SERVER_STARTING.register(GameManager::setServer);
-
 		CommandRegistrationCallback.EVENT.register((commandDispatcher, commandRegistryAccess, registrationEnvironment) -> CommandInitializer.registerCommands(commandDispatcher));
 
 	}
