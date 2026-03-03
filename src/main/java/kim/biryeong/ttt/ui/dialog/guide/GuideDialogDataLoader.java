@@ -27,6 +27,7 @@ public final class GuideDialogDataLoader {
     private static final String INNOCENT_PAGE_PATH = "guide/innocent";
     private static final String TRAITOR_PAGE_PATH = "guide/traitor";
     private static final String DETECTIVE_PAGE_PATH = "guide/detective";
+    private static final String UPDATE_PAGE_PATH = "guide/update";
     private static final String TEXT_EXTENSION = ".txt";
     private static final String LEGACY_JSON_EXTENSION = ".json";
     private static final String PAGE_INFO_SECTION = "pageinfo";
@@ -36,6 +37,7 @@ public final class GuideDialogDataLoader {
     private static volatile List<BasicPage> innocentPages = List.of();
     private static volatile List<BasicPage> traitorPages = List.of();
     private static volatile List<BasicPage> detectivePages = List.of();
+    private static volatile List<BasicPage> updatePages = List.of();
     private static boolean initialized;
 
     private GuideDialogDataLoader() {
@@ -68,18 +70,24 @@ public final class GuideDialogDataLoader {
         return detectivePages;
     }
 
+    public static List<BasicPage> getUpdatePages() {
+        return updatePages;
+    }
+
     private static void reload(MinecraftServer server) {
         basicPages = loadPages(server, BASIC_PAGE_PATH);
         innocentPages = loadPages(server, INNOCENT_PAGE_PATH);
         traitorPages = loadPages(server, TRAITOR_PAGE_PATH);
         detectivePages = loadPages(server, DETECTIVE_PAGE_PATH);
+        updatePages = loadPages(server, UPDATE_PAGE_PATH);
 
         LOGGER.info(
-                "Loaded guide pages from datapacks - basic: {}, innocent: {}, traitor: {}, detective: {}.",
+                "Loaded guide pages from datapacks - basic: {}, innocent: {}, traitor: {}, detective: {}, update: {}.",
                 basicPages.size(),
                 innocentPages.size(),
                 traitorPages.size(),
-                detectivePages.size()
+                detectivePages.size(),
+                updatePages.size()
         );
     }
 

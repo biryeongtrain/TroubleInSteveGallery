@@ -42,7 +42,7 @@ If the field is missing, built-in defaults are used.
   - Opens the guide category menu dialog.
 - `/tts guide <category>`
   - Opens one category dialog directly.
-  - Supported categories: `basic`, `innocent`, `traitor`, `detective`.
+  - Supported categories: `basic`, `innocent`, `traitor`, `detective`, `update`.
 - `/tts guide basic <page>`
   - Opens a specific basic-rules page.
   - Example: `/tts guide basic 2`
@@ -55,6 +55,9 @@ If the field is missing, built-in defaults are used.
 - `/tts guide detective <page>`
   - Opens a specific detective guide page.
   - Example: `/tts guide detective 2`
+- `/tts guide update <page>`
+  - Opens a specific update-history page.
+  - Example: `/tts guide update 2`
 - `/tts accuse <target>`
   - Broadcasts a traitor accusation to the whole server chat.
   - Only usable by alive players during active combat phases (`MIDDLE_GAME`, `OVER_TIME`).
@@ -101,12 +104,13 @@ If the field is missing, built-in defaults are used.
 
 - Press `G` (Server Dialog key) to open the quick guide menu.
 - Press `ESC` -> `Server Links` and click `TTT 가이드 (/tts guide)` for the guide shortcut link.
-- The top menu button opens your own TTT stats dialog (`/tts stats`).
+- The top menu includes quick buttons for your stats (`/tts stats`) and update history (`/tts guide update`).
 - The menu provides category buttons:
   - 기본 규칙
   - 이노센트 팁
   - 트레이터 팁
   - 탐정 팁
+  - 업데이트 내역
 
 ## Datapack Guide Pages
 
@@ -116,6 +120,7 @@ Guide pages can be defined through datapacks per category:
 - Path: `data/<namespace>/guide/innocent/*.txt`
 - Path: `data/<namespace>/guide/traitor/*.txt`
 - Path: `data/<namespace>/guide/detective/*.txt`
+- Path: `data/<namespace>/guide/update/*.txt`
 - Files are loaded on server start and on datapack reload.
 - Files are sorted by resource id path and shown in that order.
 - Legacy `*.json` pages are still read for compatibility.

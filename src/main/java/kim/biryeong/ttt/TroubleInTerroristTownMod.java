@@ -15,6 +15,7 @@ import kim.biryeong.ttt.ui.dialog.body.AlignedMessage;
 import kim.biryeong.ttt.ui.dialog.body.HeaderMessage;
 import kim.biryeong.ttt.ui.dialog.body.ImageBody;
 import kim.biryeong.ttt.ui.sidebar.GameDefaultSidebar;
+import kim.biryeong.ttt.util.MinimapClientModPacketDetector;
 import kim.biryeong.ttt.util.Sounds;
 import net.fabricmc.api.ModInitializer;
 
@@ -43,6 +44,7 @@ public class TroubleInTerroristTownMod implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		MinimapClientModPacketDetector.initialize();
 		PolymerResourcePackUtils.addModAssets(MOD_ID);
 		ModBlocks.initialize();
 		ModItems.initialize();

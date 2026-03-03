@@ -6,6 +6,7 @@ import kim.biryeong.ttt.player.duck.InGameEventProvider;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.ui.gui.ShopGUI;
+import kim.biryeong.ttt.util.AvatarTextRenderer;
 import kim.biryeong.ttt.util.KoreanKeyboardConverter;
 import kim.biryeong.ttt.util.MinimapClientModPacketDetector;
 import kim.biryeong.ttt.util.NonThrowable;
@@ -66,6 +67,11 @@ public final class Events {
 
             InGamePlayerInfoProvider playerInfo = (InGamePlayerInfoProvider) handler.getPlayer();
             playerInfo.tts$setRole(Role.SPECTATOR);
+            MinimapClientModPacketDetector.onPlayerJoined(handler.player);
+            AvatarTextRenderer.prefetchSmallAvatarAsync(
+                    handler.player.getUuid(),
+                    handler.player.getGameProfile().getName()
+            );
 
             Scheduler.INSTANCE.submit((s) -> {
                 manager.resolveJoinMap().spawnPlayer(handler.player);

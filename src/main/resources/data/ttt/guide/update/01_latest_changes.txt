@@ -1,0 +1,9 @@
+### Section: PageInfo
+###Align: Left
+title=최신 업데이트
+### EndSection: PageInfo
+
+###Header: 최근 변경점
+###Align: Left
+- 가이드 메뉴에 <yellow>업데이트 내역</yellow> 버튼이 추가되었습니다. <nl>
+- 업데이트 내역은 <yellow>txt 파일</yellow>로 관리되어 서버 데이터팩 리로드 시 반영됩니다.

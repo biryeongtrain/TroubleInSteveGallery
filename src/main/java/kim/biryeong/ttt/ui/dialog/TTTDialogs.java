@@ -92,4 +92,15 @@ public class TTTDialogs {
         }
         return Identifier.of(TroubleInTerroristTownMod.MOD_ID, "guide_detective_" + page);
     }
+
+    public static Identifier updateGuideId() {
+        return Identifier.of(TroubleInTerroristTownMod.MOD_ID, "guide_update");
+    }
+
+    public static Identifier updateGuidePageId(int page) {
+        if (page <= 1) {
+            return updateGuideId();
+        }
+        return Identifier.of(TroubleInTerroristTownMod.MOD_ID, "guide_update_" + page);
+    }
 }

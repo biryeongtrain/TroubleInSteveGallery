@@ -220,6 +220,13 @@ public class CommandInitializer {
                                         ctx.getSource(),
                                         IntegerArgumentType.getInteger(ctx, "page")
                                 ))))
+                .then(CommandManager.literal("update")
+                        .executes(ctx -> openUpdateGuidePage(ctx.getSource(), 1))
+                        .then(CommandManager.argument("page", IntegerArgumentType.integer(1))
+                                .executes(ctx -> openUpdateGuidePage(
+                                        ctx.getSource(),
+                                        IntegerArgumentType.getInteger(ctx, "page")
+                                ))))
                 .build();
 
         LiteralCommandNode<ServerCommandSource> accuse = CommandManager.literal("accuse")
@@ -1165,6 +1172,19 @@ public class CommandInitializer {
         return GuideListDialog.showDetectiveGuide(player, page);
     }
 
+    private static int openUpdateGuidePage(ServerCommandSource source, int page) {
+        if (!source.isExecutedByPlayer()) {
+            source.sendError(Text.literal("이 명령어는 플레이어만 실행할 수 있습니다."));
+            return 0;
+        }
+        ServerPlayerEntity player = source.getPlayer();
+        if (player == null) {
+            source.sendError(Text.literal("이 명령어는 플레이어만 실행할 수 있습니다."));
+            return 0;
+        }
+        return GuideListDialog.showUpdateGuide(player, page);
+    }
+
     private static int openGuideCategory(ServerCommandSource source, GuideCategory category) {
         if (!source.isExecutedByPlayer()) {
             source.sendError(Text.literal("이 명령어는 플레이어만 실행할 수 있습니다."));
@@ -1181,6 +1201,7 @@ public class CommandInitializer {
             case INNOCENT -> GuideListDialog.showInnocentGuide(player);
             case TRAITOR -> GuideListDialog.showTraitorGuide(player);
             case DETECTIVE -> GuideListDialog.showDetectiveGuide(player);
+            case UPDATE -> GuideListDialog.showUpdateGuide(player);
         };
     }
 
@@ -1209,6 +1230,7 @@ public class CommandInitializer {
         BASIC,
         INNOCENT,
         TRAITOR,
-        DETECTIVE
+        DETECTIVE,
+        UPDATE
     }
 }

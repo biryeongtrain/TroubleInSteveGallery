@@ -46,4 +46,12 @@ public final class GuideListDialog {
     public static int showDetectiveGuide(ServerPlayerEntity player, int page) {
         return GuideDetectiveDialog.show(player, page);
     }
+
+    public static int showUpdateGuide(ServerPlayerEntity player) {
+        return GuideUpdateDialog.show(player);
+    }
+
+    public static int showUpdateGuide(ServerPlayerEntity player, int page) {
+        return GuideUpdateDialog.show(player, page);
+    }
 }

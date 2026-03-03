@@ -21,14 +21,15 @@ public class CorpseSidebar extends Sidebar {
     private final Role userRole;
     private final ServerPlayerEntity user;
     private final DamageSource source;
-    private final UUID uuid;
+    private final UUID playerUuid;
 
     public CorpseSidebar(CorpseEntity corpse, ServerPlayerEntity user) {
         super(Priority.HIGH);
         this.userName = corpse.getGameProfile().getName();
         this.role = corpse.getRole();
         this.source = corpse.getDamageSource();
-        this.uuid = corpse.getUuid();
+        // Use dead player's profile UUID, not corpse entity UUID, to avoid repeated skin lookup misses.
+        this.playerUuid = corpse.getGameProfile().getId();
         this.user = user;
         this.userRole = ((InGamePlayerInfoProvider) user).tts$getRole();
         this.initialize();
@@ -36,7 +37,7 @@ public class CorpseSidebar extends Sidebar {
 
     private void initialize() {
         this.setTitle(GameManager.byMiniMessage("%s님의 시체 정보".formatted(this.userName)));
-        this.addLines(AvatarTextRenderer.resolveSmallAvatar(this.uuid, userName, false));
+        this.addLines(AvatarTextRenderer.resolveSmallAvatar(this.playerUuid, userName, false));
         this.addLines(GameManager.byMiniMessage(
                 "직업: <#color>%s</#color>"
                         .formatted(this.role.krRoleName)

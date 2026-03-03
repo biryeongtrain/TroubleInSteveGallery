@@ -109,6 +109,9 @@ dependencies {
     modImplementation ("eu.pb4:polydex:1.6.0+1.21.6")
 //	modImplementation include("eu.pb4:placeholder-api:${project.papi_version}")
     errorprone("com.google.errorprone:error_prone_core:${project.errorprone_version}")
+
+    modCompileOnly("maven.modrinth:journeymap:1.21.8-6.0.0-beta.52+fabric")
+    modCompileOnly("maven.modrinth:xaeros-minimap:fabric-1.21.8-25.3.10")
 }
 
 processResources {

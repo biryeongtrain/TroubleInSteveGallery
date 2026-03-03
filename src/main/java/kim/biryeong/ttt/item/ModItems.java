@@ -4,10 +4,7 @@ import eu.pb4.polymer.core.api.item.PolymerItemGroupUtils;
 import eu.pb4.polymer.core.api.item.SimplePolymerItem;
 import kim.biryeong.ttt.TroubleInTerroristTownMod;
 import kim.biryeong.ttt.item.detective.DNAScanner;
-import kim.biryeong.ttt.item.traitor.AssassinBow;
-import kim.biryeong.ttt.item.traitor.BambooDagger;
-import kim.biryeong.ttt.item.traitor.SuicideBomb;
-import kim.biryeong.ttt.item.traitor.TeleporterItem;
+import kim.biryeong.ttt.item.traitor.*;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.AttributeModifierSlot;
@@ -86,8 +83,8 @@ public class ModItems {
                     .sword(ToolMaterial.NETHERITE, 0, -2.8f)
                     .attributeModifiers(AttributeModifiersComponent.builder()
                             .add(EntityAttributes.ATTACK_DAMAGE, new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID, 16, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
-                            .add(EntityAttributes.ATTACK_SPEED, new EntityAttributeModifier(Item.BASE_ATTACK_SPEED_MODIFIER_ID, -3.2, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
-                            .add(EntityAttributes.ENTITY_INTERACTION_RANGE, new EntityAttributeModifier(Identifier.ofVanilla("default"), 1, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
+                            .add(EntityAttributes.ATTACK_SPEED, new EntityAttributeModifier(Item.BASE_ATTACK_SPEED_MODIFIER_ID, -2.8f, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
+                            .add(EntityAttributes.ENTITY_INTERACTION_RANGE, new EntityAttributeModifier(Identifier.ofVanilla("default"), 0.5, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
                             .build()
                     )
     );
@@ -98,7 +95,7 @@ public class ModItems {
                     .attributeModifiers(AttributeModifiersComponent.builder()
                             .add(EntityAttributes.ATTACK_DAMAGE, new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID, 14, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
                             .add(EntityAttributes.ATTACK_SPEED, new EntityAttributeModifier(Item.BASE_ATTACK_SPEED_MODIFIER_ID, -2f, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
-                            .add(EntityAttributes.ENTITY_INTERACTION_RANGE, new EntityAttributeModifier(Identifier.ofVanilla("default"), -1, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
+                            .add(EntityAttributes.ENTITY_INTERACTION_RANGE, new EntityAttributeModifier(Identifier.ofVanilla("default"), -0.5, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
                             .build()
                     )
     );
@@ -107,10 +104,12 @@ public class ModItems {
             new Item.Settings().maxCount(1)
                     .sword(ToolMaterial.NETHERITE, 0, -2.6f)
                     .attributeModifiers(AttributeModifiersComponent.builder()
-                            .add(EntityAttributes.ATTACK_DAMAGE, new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID, 18, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
+                            .add(EntityAttributes.ATTACK_DAMAGE, new EntityAttributeModifier(Item.BASE_ATTACK_DAMAGE_MODIFIER_ID, 16, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
                             .add(EntityAttributes.ATTACK_SPEED, new EntityAttributeModifier(Item.BASE_ATTACK_SPEED_MODIFIER_ID, -2.4f, EntityAttributeModifier.Operation.ADD_VALUE), AttributeModifierSlot.HAND)
                             .build())
     );
+
+    public static final Item CORPSE_SABOTAGE = register("corpse_sabotage", CorpseSabotageItem::new, new Item.Settings().maxCount(1));
 
     public static Item register(String name, Function<Item.Settings, Item> itemFactory, Item.Settings settings) {
         RegistryKey<Item> itemKey = RegistryKey.of(RegistryKeys.ITEM, Identifier.of(TroubleInTerroristTownMod.MOD_ID, name));

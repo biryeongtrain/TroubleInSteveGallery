@@ -97,5 +97,15 @@
     "sounds" : [
       "ttt:item/tester_use"
     ]
+  },
+  "item.sabotage.use" : {
+    "sounds" : [
+      "ttt:item/corpse_sabotage"
+    ]
+  },
+  "item.sabotage.beep" : {
+    "sounds" : [
+      "ttt:item/sabotage_beep"
+    ]
   }
 }

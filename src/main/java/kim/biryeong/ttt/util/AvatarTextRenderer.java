@@ -15,7 +15,10 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class AvatarTextRenderer {
@@ -25,6 +28,12 @@ public final class AvatarTextRenderer {
     private static final int SMALL_AVATAR_SIZE = 17;
     private static final String DEFAULT_AVATAR_KEY = "Steve";
     private static final Map<AvatarCacheKey, Text> SMALL_AVATAR_CACHE = new ConcurrentHashMap<>();
+    private static final Set<AvatarCacheKey> SMALL_AVATAR_IN_FLIGHT = ConcurrentHashMap.newKeySet();
+    private static final ExecutorService PREFETCH_EXECUTOR = Executors.newFixedThreadPool(2, runnable -> {
+        Thread thread = new Thread(runnable, "ttt-avatar-prefetch");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     private AvatarTextRenderer() {
         throw new IllegalStateException("Utility class");
@@ -44,6 +53,22 @@ public final class AvatarTextRenderer {
             return avatar;
         }
         return resolveDefaultAvatar(flipped);
+    }
+
+    /**
+     * Prefetches small avatar components for a player asynchronously so later UI calls avoid blocking skin fetches.
+     */
+    public static void prefetchSmallAvatarAsync(@Nullable UUID uuid, @Nullable String keyOrName) {
+        if (uuid != null) {
+            prefetchAvatarByKeyAsync(uuid.toString(), false);
+            prefetchAvatarByKeyAsync(uuid.toString(), true);
+            return;
+        }
+
+        if (keyOrName != null && !keyOrName.isBlank()) {
+            prefetchAvatarByKeyAsync(keyOrName, false);
+            prefetchAvatarByKeyAsync(keyOrName, true);
+        }
     }
 
     private static @Nullable Text resolveAvatarByUuid(@Nullable UUID uuid, boolean flipped) {
@@ -70,6 +95,33 @@ public final class AvatarTextRenderer {
         }
         SMALL_AVATAR_CACHE.put(cacheKey, renderedAvatar);
         return renderedAvatar;
+    }
+
+    private static void prefetchAvatarByKeyAsync(@Nullable String key, boolean flipped) {
+        if (key == null || key.isBlank()) {
+            return;
+        }
+
+        AvatarCacheKey cacheKey = new AvatarCacheKey(key, flipped);
+        if (SMALL_AVATAR_CACHE.containsKey(cacheKey)) {
+            return;
+        }
+        if (!SMALL_AVATAR_IN_FLIGHT.add(cacheKey)) {
+            return;
+        }
+
+        PREFETCH_EXECUTOR.execute(() -> {
+            try {
+                Text renderedAvatar = renderSmallAvatar(key, flipped);
+                if (renderedAvatar != null) {
+                    SMALL_AVATAR_CACHE.put(cacheKey, renderedAvatar);
+                }
+            } catch (Exception exception) {
+                LOGGER.debug("Failed to prefetch avatar for key '{}'.", key, exception);
+            } finally {
+                SMALL_AVATAR_IN_FLIGHT.remove(cacheKey);
+            }
+        });
     }
 
     private static Text resolveDefaultAvatar(boolean flipped) {

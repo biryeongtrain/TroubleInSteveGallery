@@ -3,7 +3,6 @@ package kim.biryeong.ttt.mixin;
 import com.mojang.serialization.Codec;
 import eu.pb4.sidebars.api.SidebarInterface;
 import eu.pb4.sidebars.impl.SidebarHolder;
-import kim.biryeong.ttt.entity.CorpseEntity;
 import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.player.ItemLoadout;
 import kim.biryeong.ttt.player.ItemLoadouts;
@@ -13,18 +12,12 @@ import kim.biryeong.ttt.player.duck.SuicideBombInfo;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.ui.sidebar.CorpseSidebar;
 import kim.biryeong.ttt.util.explosion.ExplosionUtil;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.network.packet.s2c.play.ExplosionS2CPacket;
-import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundEvents;
 import net.minecraft.storage.ReadView;
 import net.minecraft.storage.WriteView;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.explosion.ExplosionImpl;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -110,7 +103,7 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
 
     @Override
     public boolean tts$isAlive() {
-        return this.tts$alive;
+        return this.tts$alive || this.tts$role != Role.SPECTATOR;
     }
 
     @Override
@@ -191,59 +184,12 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
     private void tts$explode() {
         ServerPlayerEntity player = (ServerPlayerEntity) (Object) this;
         Vec3d pos = player.getSyncedPos().add(0, 1.5, 0);
-        ServerWorld world = player.getWorld().toServerWorld();
-        DamageSource source = world.getDamageSources().explosion(player, player);
-
-        ExplosionImpl explosion = ExplosionUtil.createExplosion(
+        ExplosionUtil.explodeWithFallback(
                 player,
                 pos,
-                world,
-                7f
+                player.getWorld().toServerWorld(),
+                5f
         );
-        explosion.explode();
-        this.tts$applyExplosionDamageFallback(player, world, pos, source, explosion.getPower());
-
-        for (ServerPlayerEntity serverPlayerEntity : world.getPlayers()) {
-            if (!(serverPlayerEntity.squaredDistanceTo(pos) < 4096.0)) continue;
-            serverPlayerEntity.networkHandler.sendPacket(new ExplosionS2CPacket(pos, Optional.ofNullable(null), ParticleTypes.EXPLOSION_EMITTER, SoundEvents.ENTITY_GENERIC_EXPLODE));
-        }
-    }
-
-    @Unique
-    private void tts$applyExplosionDamageFallback(
-            ServerPlayerEntity bomber,
-            ServerWorld world,
-            Vec3d pos,
-            DamageSource source,
-            float power
-    ) {
-        GameManager manager = GameManager.getInstance();
-        if (!manager.getCurrentPhase().canShowRole()) {
-            return;
-        }
-
-        double maxDistance = power * 2.0f;
-        double maxDistanceSquared = maxDistance * maxDistance;
-        for (ServerPlayerEntity target : world.getPlayers()) {
-            if (target.squaredDistanceTo(pos) > maxDistanceSquared) {
-                continue;
-            }
-            if (!manager.isAlive(target)) {
-                continue;
-            }
-            if (ExplosionImpl.calculateReceivedDamage(pos, target) <= 0.0f) {
-                continue;
-            }
-
-            // Some environments cancel explosion damage callbacks; force round-state kill flow as fallback.
-            if (target.damage(world, source, 1557.0f)) {
-                continue;
-            }
-
-            ServerPlayerEntity attacker = target.getUuid().equals(bomber.getUuid()) ? null : bomber;
-            manager.onKilled(attacker, target, source);
-            world.spawnEntity(CorpseEntity.createCorpse(world, target, source));
-        }
     }
 
     @Inject(method = "enterCombat", at = @At("HEAD"))

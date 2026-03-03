@@ -64,7 +64,7 @@ public class ShopUtil {
                     .descriptions(List.of(
                             byMiniMessage("너도 나도 한번에 다같이."),
                             byMiniMessage(""),
-                            byMiniMessage("<green> + </green> 5초 후 7*7*7 범위에 1557 데미지를 입힙니다."),
+                            byMiniMessage("<green> + </green> 1.5초 후 7*7*7 범위에 1557 데미지를 입힙니다."),
                             byMiniMessage("<red> - </red> 예외는 없습니다. 당신도 폭발 피해를 입습니다."),
                             byMiniMessage("구매비용 : 17 포인트")
                     ))
@@ -159,6 +159,18 @@ public class ShopUtil {
                             byMiniMessage("구매 비용 : 3 포인트")
                     ))
                     .point(3)
+                    .build(),
+
+            new ShopElement.Builder()
+                    .item(ModItems.CORPSE_SABOTAGE)
+                    .name(byMiniMessage("<red>시체 폭탄</red>"))
+                    .descriptions(List.of(
+                            byMiniMessage("<red>시체에 폭탄을 심습니다.</red>"),
+                            byMiniMessage("심어진 폭탄은 <bold>트레이터가 아닌 유저가 조사할 때 폭발합니다.</bold>"),
+                            byMiniMessage("폭발 반경은 자폭 폭탄보다 조금 좁습니다."),
+                            byMiniMessage("구매 비용 : 9 포인트")
+                    ))
+                    .point(9)
                     .build()
     );
 

@@ -100,7 +100,7 @@ public final class GameManager {
 
     private static GameManager instance;
 
-    private final NameableExecutor executor = new NameableExecutor(MoreExecutors.newDirectExecutorService());
+    public final NameableExecutor executor = new NameableExecutor(MoreExecutors.newDirectExecutorService());
     private final AtomicReference<Phase> currentPhase = new AtomicReference<>(Phase.NOT_STARTED);
     private final AtomicReference<Xoroshiro128PlusPlusRandom> rand =
             new AtomicReference<>(new Xoroshiro128PlusPlusRandom(RandomSeed.getSeed()));
@@ -1186,10 +1186,6 @@ public final class GameManager {
         }
 
         this.firstCorpseGuideShown = true;
-        broadcastGuideTipWithPadding(
-                "CORPSE FOUND",
-                "Inspect corpses for role info. Detectives can reveal killers with DNA Scanner."
-        );
         for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
             player.playSoundToPlayer(SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), SoundCategory.MASTER, 1.0f, 1.0f);
         }
@@ -1201,10 +1197,6 @@ public final class GameManager {
         }
 
         this.overtimeGuideShown = true;
-        broadcastGuideTip(
-                "OVERTIME",
-                "Traitor kills can extend overtime. Keep pressure on objectives."
-        );
     }
 
     private static void applyDeathSpectatorState(ServerPlayerEntity victim) {

@@ -23,6 +23,8 @@ public class Sounds {
     public static final SoundEvent COUNTDOWN_1_SEC = register(Identifier.of(TroubleInTerroristTownMod.MOD_ID, "countdown.1sec"));
     public static final SoundEvent JIHAD_BOMB_ACTIVE = register(Identifier.of(TroubleInTerroristTownMod.MOD_ID, "item.jihad_bomb.active"));
     public static final SoundEvent TESTER_ITEM_USE = register(Identifier.of(TroubleInTerroristTownMod.MOD_ID, "item.tester.use"));
+    public static final SoundEvent SABOTAGE_ITEM_USE = register(Identifier.of(TroubleInTerroristTownMod.MOD_ID, "item.sabotage.use"));
+    public static final SoundEvent SABOTAGE_ITEM_BEEP = register(Identifier.of(TroubleInTerroristTownMod.MOD_ID, "item.sabotage.beep"));
 
     private static SoundEvent register(Identifier id) {
         return Registry.register(Registries.SOUND_EVENT, id, SoundEvent.of(id));
@@ -43,5 +45,7 @@ public class Sounds {
         PolymerSoundEvent.registerOverlay(COUNTDOWN_1_SEC);
         PolymerSoundEvent.registerOverlay(JIHAD_BOMB_ACTIVE);
         PolymerSoundEvent.registerOverlay(TESTER_ITEM_USE);
+        PolymerSoundEvent.registerOverlay(SABOTAGE_ITEM_USE);
+        PolymerSoundEvent.registerOverlay(SABOTAGE_ITEM_BEEP);
     }
 }
