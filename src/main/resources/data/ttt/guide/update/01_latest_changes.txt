@@ -3,7 +3,12 @@
 title=최신 업데이트
 ### EndSection: PageInfo
 
-###Header: 최근 변경점
+###Header: v0.4.0
 ###Align: Left
-- 가이드 메뉴에 <yellow>업데이트 내역</yellow> 버튼이 추가되었습니다. <nl>
-- 업데이트 내역은 <yellow>txt 파일</yellow>로 관리되어 서버 데이터팩 리로드 시 반영됩니다.
+- 로드아웃 추가 : <yellow>/tts loadout</yellow>
+###Item: ttt:dagger - 단검 : 사거리 <red>-1</red> - > <blue>-0.5</blue> 로 증가
+###Item: ttt:long_ranged_sword - 대검 : 사거리 <blue>+1</blue> -> <red>+0.5</red> 로 감소
+<nl>
+###Item: ttt:jihad_bomb - 자폭 폭탄 : 범위 <blue>7</blue> -> <red>5</red> 로 감소
+###Item: ttt:corpse_sabotage 시체 폭탄 : <red> 트레이터 전용 아이템 </red> 시체에 설치 가능하며, 설치 시 특유의 소음을 냅니다. <red>트레이터</red> 가 아닌 인원이 시체를 조사할 경우 폭발하며 5범위 내의 적에게 1557 데미지를 입힙니다.
+<nl>
