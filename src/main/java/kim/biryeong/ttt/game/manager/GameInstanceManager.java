@@ -205,10 +205,7 @@ class GameInstanceManager {
     }
 
     static boolean shouldReceiveTraitorRevealPackets(boolean alive, Role role) {
-        if (role == Role.TRAITOR) {
-            return alive;
-        }
-        return !alive;
+        return role == Role.TRAITOR || !alive;
     }
 
     static boolean shouldEnableFinalInnocentGlobalGlow(

@@ -135,6 +135,36 @@ public final class GameRulesGameTest {
     }
 
     @GameTest
+    public void roundAccusationSnapshotAggregatesByTargetAndAccuser(TestContext context) {
+        UUID accuserA = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        UUID accuserB = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        UUID targetA = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        UUID targetB = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+
+        GameManager.RoundAccusationSnapshot snapshot = GameDataManager.summarizeRoundAccusations(List.of(
+                new GameManager.RoundAccusationEvent(5, accuserA, "Alpha", targetA, "TargetA", false),
+                new GameManager.RoundAccusationEvent(12, accuserB, "Bravo", targetA, "TargetA", false),
+                new GameManager.RoundAccusationEvent(19, accuserA, "Alpha", targetA, "TargetA", true),
+                new GameManager.RoundAccusationEvent(24, accuserB, "Bravo", targetB, "TargetB", false)
+        ));
+
+        context.assertEquals(4, snapshot.events().size(), Text.literal("all accusation events should be preserved"));
+        context.assertEquals(2, snapshot.targetSummaries().size(), Text.literal("two accused targets should be aggregated"));
+
+        GameManager.RoundAccusationTargetSummary firstTarget = snapshot.targetSummaries().getFirst();
+        context.assertEquals(targetA, firstTarget.targetUuid(), Text.literal("first summary should belong to first target"));
+        context.assertEquals(3, firstTarget.accusationCount(), Text.literal("first target should have three accusations"));
+        context.assertEquals(2, firstTarget.accusers().size(), Text.literal("first target should include both accusers"));
+        context.assertEquals("Alpha", firstTarget.accusers().getFirst().accuserName(), Text.literal("first accuser should preserve insertion order"));
+        context.assertEquals(2, firstTarget.accusers().getFirst().accusationCount(), Text.literal("first accuser should have two accusations"));
+
+        GameManager.RoundAccusationTargetSummary secondTarget = snapshot.targetSummaries().get(1);
+        context.assertEquals(targetB, secondTarget.targetUuid(), Text.literal("second summary should belong to second target"));
+        context.assertEquals(1, secondTarget.accusationCount(), Text.literal("second target should have one accusation"));
+        context.complete();
+    }
+
+    @GameTest
     public void traitorRevealPacketRecipientsMatchAliveAndRole(TestContext context) {
         context.assertTrue(
                 GameInstanceManager.shouldReceiveTraitorRevealPackets(true, Role.TRAITOR),
@@ -148,9 +178,9 @@ public final class GameRulesGameTest {
                 GameInstanceManager.shouldReceiveTraitorRevealPackets(true, Role.DETECTIVE),
                 Text.literal("alive detective should not receive traitor reveal packets")
         );
-        context.assertFalse(
+        context.assertTrue(
                 GameInstanceManager.shouldReceiveTraitorRevealPackets(false, Role.TRAITOR),
-                Text.literal("dead traitor should not receive traitor reveal packets")
+                Text.literal("dead traitor should continue receiving traitor reveal packets")
         );
         context.assertTrue(
                 GameInstanceManager.shouldReceiveTraitorRevealPackets(false, Role.INNOCENT),

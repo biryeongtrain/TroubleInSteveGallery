@@ -988,6 +988,13 @@ public final class GameManager {
     }
 
     /**
+     * Returns the current round accusation log and per-target aggregation for dialog rendering.
+     */
+    public @NotNull RoundAccusationSnapshot getRoundAccusationSnapshot() {
+        return this.gameDataManager.getRoundAccusationSnapshot();
+    }
+
+    /**
      * Builds a snapshot of lifetime player stats using persisted per-round logs and player data.
      */
     public @NotNull PlayerStatisticsSnapshot getPlayerStatisticsSnapshot(UUID playerUuid) {
@@ -1405,6 +1412,37 @@ public final class GameManager {
             int innocentCount,
             int traitorCount,
             int detectiveCount
+    ) {
+    }
+
+    public record RoundAccusationSnapshot(
+            List<RoundAccusationEvent> events,
+            List<RoundAccusationTargetSummary> targetSummaries
+    ) {
+    }
+
+    public record RoundAccusationEvent(
+            int elapsedSeconds,
+            UUID accuserUuid,
+            String accuserName,
+            UUID targetUuid,
+            String targetName,
+            boolean hit
+    ) {
+    }
+
+    public record RoundAccusationTargetSummary(
+            UUID targetUuid,
+            String targetName,
+            int accusationCount,
+            List<RoundAccuserSummary> accusers
+    ) {
+    }
+
+    public record RoundAccuserSummary(
+            UUID accuserUuid,
+            String accuserName,
+            int accusationCount
     ) {
     }
 

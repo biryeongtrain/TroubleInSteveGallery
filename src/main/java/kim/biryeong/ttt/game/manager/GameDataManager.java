@@ -21,7 +21,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -43,6 +45,8 @@ final class GameDataManager {
     private final Map<UUID, PlayerRoundDataInstance> roundDataByUuid = new ConcurrentHashMap<>();
     private final Map<UUID, List<RoundCombatDamageData>> roundDamageDataByUuid = new ConcurrentHashMap<>();
     private final Map<UUID, String> roundPlayerNameByUuid = new ConcurrentHashMap<>();
+    private final List<GameManager.RoundAccusationEvent> roundAccusationEvents =
+            Collections.synchronizedList(new ArrayList<>());
     private final Path ttsPath;
     private final GameManager gameManager;
 
@@ -113,6 +117,7 @@ final class GameDataManager {
         if (this.roundDataByUuid.isEmpty()) {
             this.roundDamageDataByUuid.clear();
             this.roundPlayerNameByUuid.clear();
+            this.roundAccusationEvents.clear();
             return;
         }
 
@@ -136,6 +141,7 @@ final class GameDataManager {
         this.roundDataByUuid.clear();
         this.roundDamageDataByUuid.clear();
         this.roundPlayerNameByUuid.clear();
+        this.roundAccusationEvents.clear();
     }
 
     void startToRecordKillData() {
@@ -144,6 +150,7 @@ final class GameDataManager {
         this.roundDataByUuid.clear();
         this.roundDamageDataByUuid.clear();
         this.roundPlayerNameByUuid.clear();
+        this.roundAccusationEvents.clear();
 
         for (UUID participantUuid : participants) {
             ServerPlayerEntity player = playerManager.getPlayer(participantUuid);
@@ -193,12 +200,17 @@ final class GameDataManager {
                     sender.getGameProfile().getName(),
                     sender.getUuid()
             );
-            return;
+        } else {
+            InGamePlayerInfoProvider targetInfo = (InGamePlayerInfoProvider) target;
+            boolean hit = targetInfo.tts$getRole() == Role.TRAITOR;
+            senderData.recordAccuseResult(hit);
         }
 
-        InGamePlayerInfoProvider targetInfo = (InGamePlayerInfoProvider) target;
-        boolean hit = targetInfo.tts$getRole() == Role.TRAITOR;
-        senderData.recordAccuseResult(hit);
+        recordRoundAccusationData(sender, target);
+    }
+
+    GameManager.RoundAccusationSnapshot getRoundAccusationSnapshot() {
+        return summarizeRoundAccusations(copyRoundAccusationEvents());
     }
 
     CombatStatsSnapshot getCombatStatsSnapshot(UUID playerUuid) {
@@ -267,6 +279,23 @@ final class GameDataManager {
         }
     }
 
+    static GameManager.RoundAccusationSnapshot summarizeRoundAccusations(
+            List<GameManager.RoundAccusationEvent> events
+    ) {
+        Map<UUID, TargetAccusationAccumulator> targetAccumulators = new LinkedHashMap<>();
+        for (GameManager.RoundAccusationEvent event : events) {
+            targetAccumulators.computeIfAbsent(
+                    event.targetUuid(),
+                    ignored -> new TargetAccusationAccumulator(event.targetUuid(), event.targetName())
+            ).record(event.accuserUuid(), event.accuserName(), event.targetName());
+        }
+
+        List<GameManager.RoundAccusationTargetSummary> targetSummaries = targetAccumulators.values().stream()
+                .map(TargetAccusationAccumulator::toSummary)
+                .toList();
+        return new GameManager.RoundAccusationSnapshot(List.copyOf(events), targetSummaries);
+    }
+
     private void recordRoundKillData(
             UUID recorderUuid,
             int elapsedSeconds,
@@ -283,6 +312,23 @@ final class GameDataManager {
         }
 
         roundData.recordKillData(elapsedSeconds, counterpartPlayer, damageSource);
+    }
+
+    private void recordRoundAccusationData(ServerPlayerEntity sender, ServerPlayerEntity target) {
+        if (!GameManager.getInstance().isGameStarted()) {
+            return;
+        }
+
+        InGamePlayerInfoProvider targetInfo = (InGamePlayerInfoProvider) target;
+        int elapsedSeconds = this.gameManager.gameInstanceManager.getElapsedTicks() / TICKS_PER_SECOND;
+        this.roundAccusationEvents.add(new GameManager.RoundAccusationEvent(
+                elapsedSeconds,
+                sender.getUuid(),
+                sender.getGameProfile().getName(),
+                target.getUuid(),
+                target.getGameProfile().getName(),
+                targetInfo.tts$getRole() == Role.TRAITOR
+        ));
     }
 
     private void recordRoundDamageData(
@@ -420,6 +466,12 @@ final class GameDataManager {
         return "%02d:%02d".formatted(minutes, seconds);
     }
 
+    private List<GameManager.RoundAccusationEvent> copyRoundAccusationEvents() {
+        synchronized (this.roundAccusationEvents) {
+            return List.copyOf(this.roundAccusationEvents);
+        }
+    }
+
     private void backupCorruptedPlayerData(UUID uuid, Path sourcePath) {
         Path backupPath = getPlayerDataBackupPath(uuid);
         try {
@@ -507,6 +559,66 @@ final class GameDataManager {
             String victimName,
             Role victimRole
     ) {
+    }
+
+    private static final class TargetAccusationAccumulator {
+        private final UUID targetUuid;
+        private String targetName;
+        private int accusationCount;
+        private final Map<UUID, AccuserAccumulator> accusers = new LinkedHashMap<>();
+
+        private TargetAccusationAccumulator(UUID targetUuid, String targetName) {
+            this.targetUuid = targetUuid;
+            this.targetName = targetName;
+        }
+
+        void record(UUID accuserUuid, String accuserName, String latestTargetName) {
+            if (latestTargetName != null && !latestTargetName.isBlank()) {
+                this.targetName = latestTargetName;
+            }
+
+            this.accusationCount++;
+            this.accusers.computeIfAbsent(accuserUuid, ignored -> new AccuserAccumulator(accuserUuid, accuserName))
+                    .increment(accuserName);
+        }
+
+        GameManager.RoundAccusationTargetSummary toSummary() {
+            List<GameManager.RoundAccuserSummary> accuserSummaries = this.accusers.values().stream()
+                    .map(AccuserAccumulator::toSummary)
+                    .toList();
+            return new GameManager.RoundAccusationTargetSummary(
+                    this.targetUuid,
+                    this.targetName,
+                    this.accusationCount,
+                    accuserSummaries
+            );
+        }
+    }
+
+    private static final class AccuserAccumulator {
+        private final UUID accuserUuid;
+        private String accuserName;
+        private int accusationCount;
+
+        private AccuserAccumulator(UUID accuserUuid, String accuserName) {
+            this.accuserUuid = accuserUuid;
+            this.accuserName = accuserName;
+        }
+
+        void increment(String latestName) {
+            if (latestName != null && !latestName.isBlank()) {
+                this.accuserName = latestName;
+            }
+            this.accusationCount++;
+        }
+
+        GameManager.RoundAccuserSummary toSummary() {
+            return new GameManager.RoundAccuserSummary(
+                    this.accuserUuid,
+                    this.accuserName,
+                    this.accusationCount
+            );
+        }
     }
 
     private static final class CombatStatsAccumulator {
