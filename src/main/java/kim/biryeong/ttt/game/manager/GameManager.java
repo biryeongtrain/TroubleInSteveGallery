@@ -956,6 +956,10 @@ public final class GameManager {
         return this.gameInstanceManager.getAliveParticipantCount();
     }
 
+    public int getConfirmedRemainingParticipantCount() {
+        return this.gameInstanceManager.getConfirmedRemainingParticipantCount();
+    }
+
     /**
      * Whether the recipient should see traitor fake-team/glow reveal packets during combat phases.
      */
@@ -1058,6 +1062,10 @@ public final class GameManager {
         releaseHeldLeashes(victim);
 
         applyDeathSpectatorState(victim);
+    }
+
+    public void onCorpseDiscovered(UUID deadPlayerUuid) {
+        this.gameInstanceManager.onCorpseDiscovered(deadPlayerUuid);
     }
 
     private static void releaseHeldLeashes(ServerPlayerEntity victim) {

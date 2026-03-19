@@ -68,8 +68,11 @@ class GameInstanceManager {
 
     private final Logger logger = LoggerFactory.getLogger(GameInstanceManager.class);
     private final Set<UUID> participants = Collections.synchronizedSet(new HashSet<>());
+    private final Set<UUID> roundParticipants = new HashSet<>();
     private final Set<UUID> corpseEntities = Collections.synchronizedSet(new HashSet<>());
     private final Set<UUID> aliveParticipants = new HashSet<>();
+    private final Set<UUID> officiallyRemovedParticipants = new HashSet<>();
+    private final Set<UUID> revealedDeadParticipants = new HashSet<>();
     private final Set<UUID> fakeTraitorTeamRecipients = new HashSet<>();
     private final Set<UUID> fakeDetectiveTeamRecipients = new HashSet<>();
     private final Set<UUID> fakeHiddenNameTagTeamRecipients = new HashSet<>();
@@ -77,6 +80,7 @@ class GameInstanceManager {
     private final Map<UUID, Integer> karma = new HashMap<>();
 
     private int aliveTraitors = 0;
+    private int initialParticipantCount = 0;
     private int gamePlayTimeTicks;
     private int overtime = 0;
     private int warmupTimeTick = 0;
@@ -96,9 +100,14 @@ class GameInstanceManager {
         deactivateFinalInnocentGlobalGlow();
         this.participants.clear();
         this.participants.addAll(participantUuids);
+        this.roundParticipants.clear();
+        this.roundParticipants.addAll(participantUuids);
 
         this.aliveParticipants.clear();
         this.aliveParticipants.addAll(participantUuids);
+        this.officiallyRemovedParticipants.clear();
+        this.revealedDeadParticipants.clear();
+        this.initialParticipantCount = participantUuids.size();
 
         this.karma.clear();
         participantUuids.forEach(uuid -> this.karma.put(uuid, DEFAULT_KARMA));
@@ -505,6 +514,37 @@ class GameInstanceManager {
         return this.aliveParticipants.size();
     }
 
+    public int getConfirmedRemainingParticipantCount() {
+        return calculateConfirmedRemainingParticipantCount(
+                this.initialParticipantCount,
+                this.officiallyRemovedParticipants.size()
+        );
+    }
+
+    static int calculateConfirmedRemainingParticipantCount(int initialParticipantCount, int officiallyRemovedCount) {
+        int normalizedInitialCount = Math.max(0, initialParticipantCount);
+        int normalizedRemovedCount = Math.max(0, officiallyRemovedCount);
+        return Math.max(0, normalizedInitialCount - normalizedRemovedCount);
+    }
+
+    public void onCorpseDiscovered(UUID deadPlayerUuid) {
+        if (!this.roundParticipants.contains(deadPlayerUuid)) {
+            return;
+        }
+        if (!this.revealedDeadParticipants.add(deadPlayerUuid)) {
+            return;
+        }
+
+        markParticipantAsOfficiallyRemoved(deadPlayerUuid);
+    }
+
+    boolean markParticipantAsOfficiallyRemoved(UUID participantUuid) {
+        if (!this.roundParticipants.contains(participantUuid)) {
+            return false;
+        }
+        return this.officiallyRemovedParticipants.add(participantUuid);
+    }
+
     public int getElapsedTicks() {
         return this.elapsedTicks;
     }
@@ -517,6 +557,7 @@ class GameInstanceManager {
         clearDetectiveTeamPackets();
 
         this.participants.clear();
+        this.roundParticipants.clear();
         this.elapsedTicks = 0;
         this.overtime = 0;
         this.isOverTime = false;
@@ -527,7 +568,10 @@ class GameInstanceManager {
 
         this.karma.clear();
         this.aliveTraitors = 0;
+        this.initialParticipantCount = 0;
         this.aliveParticipants.clear();
+        this.officiallyRemovedParticipants.clear();
+        this.revealedDeadParticipants.clear();
     }
 
     private void removeCorpseEntities() {
@@ -557,6 +601,7 @@ class GameInstanceManager {
         InGamePlayerInfoProvider playerInfo = (InGamePlayerInfoProvider) player;
         this.logger.info("Player {} ({}) has left the game.", player.getGameProfile().getName(), playerInfo.tts$getRole());
 
+        markParticipantAsOfficiallyRemoved(playerUuid);
         this.participants.remove(playerUuid);
         this.karma.remove(playerUuid);
         this.fakeTraitorTeamRecipients.remove(playerUuid);

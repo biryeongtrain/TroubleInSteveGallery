@@ -106,6 +106,87 @@ public final class GameRulesGameTest {
     }
 
     @GameTest
+    public void confirmedRemainingCountStartsFromRoundParticipantCount(TestContext context) {
+        GameInstanceManager manager = new GameInstanceManager();
+        manager.initialize(List.of(
+                UUID.fromString("11111111-1111-1111-1111-111111111111"),
+                UUID.fromString("22222222-2222-2222-2222-222222222222"),
+                UUID.fromString("33333333-3333-3333-3333-333333333333"),
+                UUID.fromString("44444444-4444-4444-4444-444444444444")
+        ));
+
+        context.assertEquals(4, manager.getConfirmedRemainingParticipantCount(), Text.literal("confirmed count should match round participant count at start"));
+        context.complete();
+    }
+
+    @GameTest
+    public void corpseDiscoveryReducesConfirmedCountOnlyOnce(TestContext context) {
+        UUID discovered = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        UUID other = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+        GameInstanceManager manager = new GameInstanceManager();
+        manager.initialize(List.of(discovered, other));
+
+        manager.onCorpseDiscovered(discovered);
+        context.assertEquals(1, manager.getConfirmedRemainingParticipantCount(), Text.literal("first corpse discovery should reduce confirmed count"));
+
+        manager.onCorpseDiscovered(discovered);
+        context.assertEquals(1, manager.getConfirmedRemainingParticipantCount(), Text.literal("repeat corpse discovery should not reduce confirmed count twice"));
+
+        manager.onCorpseDiscovered(UUID.fromString("cccccccc-cccc-cccc-cccc-cccccccccccc"));
+        context.assertEquals(1, manager.getConfirmedRemainingParticipantCount(), Text.literal("non-participant corpse discovery should be ignored"));
+        context.complete();
+    }
+
+    @GameTest
+    public void officialRemovalMatchesDisconnectSemanticsAndAvoidsDoubleCount(TestContext context) {
+        UUID leftAlive = UUID.fromString("dddddddd-dddd-dddd-dddd-dddddddddddd");
+        UUID leftDeadBeforeDiscovery = UUID.fromString("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
+        GameInstanceManager manager = new GameInstanceManager();
+        manager.initialize(List.of(
+                leftAlive,
+                leftDeadBeforeDiscovery,
+                UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff")
+        ));
+
+        context.assertTrue(
+                manager.markParticipantAsOfficiallyRemoved(leftAlive),
+                Text.literal("alive leaver should be marked as officially removed")
+        );
+        context.assertEquals(2, manager.getConfirmedRemainingParticipantCount(), Text.literal("alive leaver should reduce confirmed count"));
+
+        context.assertFalse(
+                manager.markParticipantAsOfficiallyRemoved(leftAlive),
+                Text.literal("same participant should not be removed twice")
+        );
+        context.assertEquals(2, manager.getConfirmedRemainingParticipantCount(), Text.literal("duplicate removal should not change confirmed count"));
+
+        context.assertTrue(
+                manager.markParticipantAsOfficiallyRemoved(leftDeadBeforeDiscovery),
+                Text.literal("dead but undiscovered leaver should also be marked as officially removed")
+        );
+        context.assertEquals(1, manager.getConfirmedRemainingParticipantCount(), Text.literal("undiscovered dead leaver should reduce confirmed count"));
+
+        manager.onCorpseDiscovered(leftDeadBeforeDiscovery);
+        context.assertEquals(1, manager.getConfirmedRemainingParticipantCount(), Text.literal("later corpse discovery should not double count a leaving participant"));
+        context.complete();
+    }
+
+    @GameTest
+    public void confirmedRemainingCountClampsAtZero(TestContext context) {
+        context.assertEquals(
+                0,
+                GameInstanceManager.calculateConfirmedRemainingParticipantCount(2, 5),
+                Text.literal("confirmed remaining count should not go negative")
+        );
+        context.assertEquals(
+                0,
+                GameInstanceManager.calculateConfirmedRemainingParticipantCount(-1, 1),
+                Text.literal("negative initial count should normalize to zero")
+        );
+        context.complete();
+    }
+
+    @GameTest
     public void roundSummarySameTeamKillClassificationMatchesRoleTeams(TestContext context) {
         context.assertTrue(
                 RoundSummaryDialog.isSameTeamKill(Role.INNOCENT, Role.DETECTIVE),

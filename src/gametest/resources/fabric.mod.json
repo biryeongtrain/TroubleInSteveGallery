@@ -11,6 +11,7 @@
       "kim.biryeong.ttt.EventsGameTest",
       "kim.biryeong.ttt.command.CommandInitializerGameTest",
       "kim.biryeong.ttt.ui.sidebar.CorpseSidebarGameTest",
+      "kim.biryeong.ttt.ui.sidebar.GameDefaultSidebarGameTest",
       "kim.biryeong.ttt.ui.dialog.guide.GuideDialogDataLoaderGameTest",
       "kim.biryeong.ttt.ui.dialog.guide.GuideTraitorDialogGameTest"
     ]

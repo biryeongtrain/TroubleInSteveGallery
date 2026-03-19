@@ -5,6 +5,7 @@ import eu.pb4.sidebars.api.lines.SimpleSidebarLine;
 import eu.pb4.sidebars.api.lines.SuppliedSidebarLine;
 import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
+import kim.biryeong.ttt.player.role.Role;
 import net.minecraft.scoreboard.number.BlankNumberFormat;
 import net.minecraft.text.Text;
 import net.minecraft.world.GameMode;
@@ -18,7 +19,7 @@ public class GameDefaultSidebar extends Sidebar {
 
         this.setTitle(GameManager.byMiniMessage("<red>T</red><green>T</green><blue>T</blue>"));
         this.addLines(new SimpleSidebarLine(0, Text.empty(), BlankNumberFormat.INSTANCE));
-        this.addLines(new SuppliedSidebarLine(0, (player -> {
+        this.addLines(new SuppliedSidebarLine(0, player -> {
             GameManager.Phase phase = GameManager.getInstance().getCurrentPhase();
             String phaseString = phase.displayName;
             String color = switch (phase) {
@@ -28,7 +29,7 @@ public class GameDefaultSidebar extends Sidebar {
             };
 
             return GameManager.byMiniMessage(("게임 단계 : <color>" + phaseString + "</color>").replace("color", color));
-        }), (players) -> BlankNumberFormat.INSTANCE));
+        }, (players) -> BlankNumberFormat.INSTANCE));
 
         this.addLines(new SimpleSidebarLine(0, Text.empty(), BlankNumberFormat.INSTANCE));
         this.addLines(new SuppliedSidebarLine(0, (player) -> {
@@ -48,18 +49,13 @@ public class GameDefaultSidebar extends Sidebar {
             }
 
             InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
-            String value = switch (info.tts$getRole()) {
-                case TRAITOR, SPECTATOR -> manager.getAliveParticipantCount() + "명";
-                case INNOCENT, DETECTIVE -> "알 수 없음";
-            };
-            String color = switch (info.tts$getRole()) {
-                case TRAITOR, SPECTATOR -> "yellow";
-                case INNOCENT, DETECTIVE -> "gray";
-            };
-            if (player.getGameMode() == GameMode.SPECTATOR) {
-                value = manager.getAliveParticipantCount() + "명";
-                color = "yellow";
-            }
+            String value = formatRemainingParticipantCount(
+                    info.tts$getRole(),
+                    player.getGameMode(),
+                    manager.getAliveParticipantCount(),
+                    manager.getConfirmedRemainingParticipantCount()
+            );
+            String color = resolveRemainingParticipantCountColor(info.tts$getRole(), player.getGameMode());
             return GameManager.byMiniMessage(("남은 인원 : <color>" + value + "</color>").replace("color", color));
         }, (players) -> BlankNumberFormat.INSTANCE));
         this.addLines(new SuppliedSidebarLine(0, (player) -> {
@@ -70,5 +66,18 @@ public class GameDefaultSidebar extends Sidebar {
 
         this.setDefaultNumberFormat(BlankNumberFormat.INSTANCE);
         this.show();
+    }
+
+    static boolean shouldShowConfirmedRemainingCount(Role role, GameMode gameMode) {
+        return gameMode != GameMode.SPECTATOR && (role == Role.INNOCENT || role == Role.DETECTIVE);
+    }
+
+    static String formatRemainingParticipantCount(Role role, GameMode gameMode, int aliveCount, int confirmedCount) {
+        int displayedCount = shouldShowConfirmedRemainingCount(role, gameMode) ? confirmedCount : aliveCount;
+        return displayedCount + "명";
+    }
+
+    static String resolveRemainingParticipantCountColor(Role role, GameMode gameMode) {
+        return shouldShowConfirmedRemainingCount(role, gameMode) ? "gray" : "yellow";
     }
 }

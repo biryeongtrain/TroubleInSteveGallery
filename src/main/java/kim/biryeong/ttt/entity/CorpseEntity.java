@@ -174,6 +174,7 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
             );
             this.hitboxInteraction.setCustomNameVisible(true);
             this.isRevealed = true;
+            GameManager.getInstance().onCorpseDiscovered(deadPlayerUuid);
 
             String investigatorName = serverPlayer.getNameForScoreboard();
             serverPlayer.getServer().getPlayerManager().broadcast(
