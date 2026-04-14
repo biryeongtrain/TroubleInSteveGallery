@@ -340,6 +340,7 @@ public final class GameManager {
 
         this.currentMap.spreadPlayers(availablePlayers);
         this.currentMap.spreadPlayers(spectatorPlayers);
+        this.currentMap.repairMissingBlockEntities();
         for (ServerPlayerEntity player : availablePlayers) {
             InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
             player.changeGameMode(resolveRoundStartGameMode(info.tts$denyToPlay()));
@@ -594,7 +595,7 @@ public final class GameManager {
         if (playerCount <= 0) {
             return 0;
         }
-        return Math.max(playerCount / 3, 1);
+        return Math.max((int) Math.floor(playerCount / 3.5d), 1);
     }
 
     private void selectRoles(

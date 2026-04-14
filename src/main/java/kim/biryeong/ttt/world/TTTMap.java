@@ -1,18 +1,24 @@
 package kim.biryeong.ttt.world;
 
+import eu.pb4.polyfactory.block.network.NetworkComponent;
 import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.world.gen.TemplateChunkGenerator;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.random.Xoroshiro128PlusPlusRandom;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.GameRules;
 import net.minecraft.world.TeleportTarget;
+import net.minecraft.world.chunk.WorldChunk;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,8 +32,10 @@ import xyz.nucleoid.map_templates.TemplateRegion;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class TTTMap {
     private static final int PORTAL_COOLDOWN_TICKS = 10;
@@ -99,6 +107,67 @@ public class TTTMap {
         }
     }
 
+    public void repairMissingBlockEntities() {
+        if (this.world == null) {
+            throw new IllegalStateException("Map world is not generated yet: " + this.instanceId);
+        }
+
+        BlockBounds bounds = this.template.getBounds();
+        BlockPos min = bounds.min();
+        BlockPos max = bounds.max();
+        BlockPos.Mutable mutablePos = new BlockPos.Mutable();
+        Set<BlockPos> rotationalNetworkPositions = new LinkedHashSet<>();
+        Set<BlockPos> rotationalConnectorPositions = new LinkedHashSet<>();
+        int repairedCount = 0;
+
+        for (int chunkX = ChunkSectionPos.getSectionCoord(min.getX()); chunkX <= ChunkSectionPos.getSectionCoord(max.getX()); chunkX++) {
+            for (int chunkZ = ChunkSectionPos.getSectionCoord(min.getZ()); chunkZ <= ChunkSectionPos.getSectionCoord(max.getZ()); chunkZ++) {
+                WorldChunk chunk = this.world.getChunk(chunkX, chunkZ);
+                int minX = Math.max(min.getX(), chunk.getPos().getStartX());
+                int maxX = Math.min(max.getX(), chunk.getPos().getEndX());
+                int minZ = Math.max(min.getZ(), chunk.getPos().getStartZ());
+                int maxZ = Math.min(max.getZ(), chunk.getPos().getEndZ());
+
+                for (int y = min.getY(); y <= max.getY(); y++) {
+                    for (int z = minZ; z <= maxZ; z++) {
+                        for (int x = minX; x <= maxX; x++) {
+                            mutablePos.set(x, y, z);
+                            BlockState state = chunk.getBlockState(mutablePos);
+                            if (state.getBlock() instanceof NetworkComponent.Rotational) {
+                                rotationalNetworkPositions.add(mutablePos.toImmutable());
+                            }
+                            if (state.getBlock() instanceof NetworkComponent.RotationalConnector) {
+                                rotationalConnectorPositions.add(mutablePos.toImmutable());
+                            }
+                            if (!state.hasBlockEntity()) {
+                                continue;
+                            }
+                            if (chunk.getBlockEntity(mutablePos) != null) {
+                                continue;
+                            }
+
+                            repairedCount += tryCreateMissingBlockEntity(chunk, mutablePos, state);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (repairedCount > 0) {
+            LOGGER.info("Repaired {} missing block entities in map '{}'.", repairedCount, this.instanceId);
+        }
+
+        if (!rotationalConnectorPositions.isEmpty()) {
+            rotationalConnectorPositions.forEach(pos -> NetworkComponent.RotationalConnector.updateRotationalConnectorAt(this.world, pos));
+            LOGGER.info("Refreshed {} rotational connector nodes in map '{}'.", rotationalConnectorPositions.size(), this.instanceId);
+        }
+
+        if (!rotationalNetworkPositions.isEmpty()) {
+            rotationalNetworkPositions.forEach(pos -> NetworkComponent.Rotational.updateRotationalAt(this.world, pos));
+            LOGGER.info("Refreshed {} rotational network nodes in map '{}'.", rotationalNetworkPositions.size(), this.instanceId);
+        }
+    }
+
     public void tickPortals() {
         if (this.world == null || this.portalRoutes.isEmpty()) {
             return;
@@ -162,6 +231,22 @@ public class TTTMap {
 
     private static boolean isPortalTeleportCandidate(Entity entity) {
         return !entity.isRemoved() && entity.isAlive() && !entity.hasPortalCooldown();
+    }
+
+    private int tryCreateMissingBlockEntity(WorldChunk chunk, BlockPos pos, BlockState state) {
+        BlockEntity blockEntity = chunk.getBlockEntity(pos, WorldChunk.CreationType.IMMEDIATE);
+        if (blockEntity == null) {
+            LOGGER.warn(
+                    "Block '{}' in map '{}' could not recreate a missing block entity at {}.",
+                    state.getBlock(),
+                    this.instanceId,
+                    pos
+                );
+            return 0;
+        }
+
+        chunk.markNeedsSaving();
+        return 1;
     }
 
     private List<PortalRoute> buildPortalRoutes(MapTemplate mapTemplate) {

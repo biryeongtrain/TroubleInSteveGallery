@@ -3,6 +3,13 @@
 title=최신 업데이트
 ### EndSection: PageInfo
 
+###Header: v0.5.0 - Map Update
+###Align: Left
+<bold> - 맵 수정
+ - <yellow> kitchen </yellow> 신규 기믹 : 점프패드, 레일
+ - <yellow> shopping_mall</yellow>  신규 기믹 : 레일
+ - <yellow> minecraft_city</yellow> 신규 기믹 : 포탈
+ - <yellow> 67thfastfoodway </yellow> 신규 기믹 : 역 저능아존 (헬기방)
 ###Header: v0.4.0
 ###Align: Left
 - 로드아웃 추가 : <yellow>/tts loadout</yellow>

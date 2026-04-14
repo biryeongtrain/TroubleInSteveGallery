@@ -8,6 +8,7 @@ import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.item.Item;
 import net.minecraft.item.Items;
+import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
@@ -41,6 +42,36 @@ public class ShopUtil {
                             )
                     ))
                     .hideDefaultTooltip(true)
+                    .build(),
+            new ShopElement.Builder()
+                    .item(Registries.ITEM.get(Identifier.of("glideaway:cherry_hang_glider")))
+                    .name(byMiniMessage("<pink>글라이더!</pink>"))
+                    .descriptions(List.of(
+                            byMiniMessage("사용 가능한 글라이더를 지급받습니다."),
+                            byMiniMessage("<red><bold>이걸로 맵뚫시 밴</red></bold>"),
+                            byMiniMessage("구매 비용 : 7 포인트")
+                    ))
+                    .point(7)
+                    .build(),
+            new ShopElement.Builder()
+                    .item(Registries.ITEM.get(Identifier.of("glideaway:wind_in_a_bottle")))
+                    .name(byMiniMessage("<pink>바람이 든 병</pink>"))
+                    .descriptions(List.of(
+                            byMiniMessage("글라이더 사용시 우클릭 하면 높게 날 수 있습니다."),
+                            byMiniMessage("<red><bold>이걸로 맵뚫시 밴</red></bold>"),
+                            byMiniMessage("구매 비용 : 3 포인트")
+                    ))
+                    .point(3)
+                    .build(),
+            new ShopElement.Builder()
+                    .item(Registries.ITEM.get(Identifier.of("polyfactory:chain_lift")))
+                    .name(byMiniMessage("<pink>리프트 작동기</pink>"))
+                    .descriptions(List.of(
+                            byMiniMessage("Kitchen 맵에서만 사용할 수 있습니다. (지금은)"),
+                            byMiniMessage("사슬 축에 우클릭하면 리프트가 생성됩니다."),
+                            byMiniMessage("구매 비용 : 2 포인트")
+                    ))
+                    .point(2)
                     .build()
     );
 
@@ -69,6 +100,36 @@ public class ShopUtil {
                             byMiniMessage("구매비용 : 17 포인트")
                     ))
                     .point(17)
+                    .build(),
+            new ShopElement.Builder()
+                    .item(Registries.ITEM.get(Identifier.of("glideaway:cherry_hang_glider")))
+                    .name(byMiniMessage("<pink>글라이더!</pink>"))
+                    .descriptions(List.of(
+                            byMiniMessage("사용 가능한 글라이더를 지급받습니다."),
+                            byMiniMessage("<red><bold>이걸로 맵뚫시 밴</red></bold>"),
+                            byMiniMessage("구매 비용 : 5 포인트")
+                    ))
+                    .point(5)
+                    .build(),
+            new ShopElement.Builder()
+                    .item(Registries.ITEM.get(Identifier.of("glideaway:wind_in_a_bottle")))
+                    .name(byMiniMessage("<pink>바람이 든 병</pink>"))
+                    .descriptions(List.of(
+                            byMiniMessage("글라이더 사용시 우클릭 하면 높게 날 수 있습니다."),
+                            byMiniMessage("<red><bold>이걸로 맵뚫시 밴</red></bold>"),
+                            byMiniMessage("구매 비용 : 2 포인트")
+                    ))
+                    .point(2)
+                    .build(),
+            new ShopElement.Builder()
+                    .item(Registries.ITEM.get(Identifier.of("polyfactory:chain_lift")))
+                    .name(byMiniMessage("<pink>리프트 작동기</pink>"))
+                    .descriptions(List.of(
+                            byMiniMessage("Kitchen 맵에서만 사용할 수 있습니다. (지금은)"),
+                            byMiniMessage("사슬 축에 우클릭하면 리프트가 생성됩니다."),
+                            byMiniMessage("구매 비용 : 1 포인트")
+                    ))
+                    .point(1)
                     .build()
             ,
             new ShopElement.Builder()
@@ -124,30 +185,39 @@ public class ShopUtil {
                     .build()
             ,
             new ShopElement.Builder()
-                    .item(Items.COMPASS)
-                    .name(byMiniMessage("<red>플레이어 추적기</red>"))
+                    .item(Items.WIND_CHARGE)
+                    .name(byMiniMessage("돌풍구"))
                     .descriptions(List.of(
-                            byMiniMessage("네비게이터를 활성화하여 50블록 이내의 플레이어를 탐지합니다."),
-                            byMiniMessage("<red>주의 ! 중복으로 구매해도 효과가 중첩되지 않습니다!</red>"),
-                            byMiniMessage("구매비용 : 5 포인트")
+                            byMiniMessage("문재인 게임 시작"),
+                                    byMiniMessage("2포")
                     ))
-                    .point(5)
-                    .handler((item, player) -> {
-                                try {
-                                    Objects.requireNonNull(player
-                                                    .getAttributeInstance(EntityAttributes.WAYPOINT_RECEIVE_RANGE))
-                                            .addPersistentModifier(new EntityAttributeModifier(
-                                                    MODIFIER_ID,
-                                                    50,
-                                                    EntityAttributeModifier.Operation.ADD_VALUE)
-                                            );
-                                } catch (Exception ignored) {
-
-                                }
-                            }
-                    )
-                    .hideDefaultTooltip(true)
+                    .point(2)
                     .build(),
+//            new ShopElement.Builder()
+//                    .item(Items.COMPASS)
+//                    .name(byMiniMessage("<red>플레이어 추적기</red>"))
+//                    .descriptions(List.of(
+//                            byMiniMessage("네비게이터를 활성화하여 50블록 이내의 플레이어를 탐지합니다."),
+//                            byMiniMessage("<red>주의 ! 중복으로 구매해도 효과가 중첩되지 않습니다!</red>"),
+//                            byMiniMessage("구매비용 : 5 포인트")
+//                    ))
+//                    .point(5)
+//                    .handler((item, player) -> {
+//                                try {
+//                                    Objects.requireNonNull(player
+//                                                    .getAttributeInstance(EntityAttributes.WAYPOINT_RECEIVE_RANGE))
+//                                            .addPersistentModifier(new EntityAttributeModifier(
+//                                                    MODIFIER_ID,
+//                                                    50,
+//                                                    EntityAttributeModifier.Operation.ADD_VALUE)
+//                                            );
+//                                } catch (Exception ignored) {
+//
+//                                }
+//                            }
+//                    )
+//                    .hideDefaultTooltip(true)
+//                    .build(),
 
             new ShopElement.Builder()
                     .item(Items.BLAZE_ROD)
@@ -228,24 +298,64 @@ public class ShopUtil {
                     .point(3)
                     .build()
             ,
+//            new ShopElement.Builder()
+//                    .item(Items.COMPASS)
+//                    .name(byMiniMessage("<red>플레이어 추적기</red>"))
+//                    .descriptions(List.of(
+//                            byMiniMessage("네비게이터를 활성화하여 50블록 이내의 플레이어를 탐지합니다."),
+//                            byMiniMessage("<red> 주의 ! 중복으로 구매해도 효과가 중첩되지 않습니다! </red>")
+//                    ))
+//                    .point(5)
+//                    .handler((item, player) -> Objects.requireNonNull(player
+//                                    .getAttributeInstance(EntityAttributes.WAYPOINT_RECEIVE_RANGE))
+//                            .addPersistentModifier(new EntityAttributeModifier(
+//                                            MODIFIER_ID,
+//                                            50,
+//                                            EntityAttributeModifier.Operation.ADD_VALUE
+//                                    )
+//                            )
+//                    )
+//                    .hideDefaultTooltip(true)
+//                    .build(),
+
             new ShopElement.Builder()
-                    .item(Items.COMPASS)
-                    .name(byMiniMessage("<red>플레이어 추적기</red>"))
+                    .item(Registries.ITEM.get(Identifier.of("glideaway:cherry_hang_glider")))
+                    .name(byMiniMessage("<yellow>글라이더!</yellow>"))
                     .descriptions(List.of(
-                            byMiniMessage("네비게이터를 활성화하여 50블록 이내의 플레이어를 탐지합니다."),
-                            byMiniMessage("<red> 주의 ! 중복으로 구매해도 효과가 중첩되지 않습니다! </red>")
+                            byMiniMessage("사용 가능한 글라이더를 지급받습니다."),
+                            byMiniMessage("<red><bold>이걸로 맵뚫시 밴</red>"),
+                            byMiniMessage("구매 비용 : 5 포인트")
                     ))
                     .point(5)
-                    .handler((item, player) -> Objects.requireNonNull(player
-                                    .getAttributeInstance(EntityAttributes.WAYPOINT_RECEIVE_RANGE))
-                            .addPersistentModifier(new EntityAttributeModifier(
-                                            MODIFIER_ID,
-                                            50,
-                                            EntityAttributeModifier.Operation.ADD_VALUE
-                                    )
-                            )
-                    )
-                    .hideDefaultTooltip(true)
+                    .build(),
+            new ShopElement.Builder()
+                    .item(Registries.ITEM.get(Identifier.of("glideaway:wind_in_a_bottle")))
+                    .name(byMiniMessage("<yellow>바람이 든 병</yellow>"))
+                    .descriptions(List.of(
+                            byMiniMessage("글라이더 사용시 우클릭 하면 높게 날 수 있습니다."),
+                            byMiniMessage("<red><bold>이걸로 맵뚫시 밴</red>"),
+                            byMiniMessage("구매 비용 : 2 포인트")
+                    ))
+                    .point(2)
+                    .build(),
+            new ShopElement.Builder()
+                    .item(Registries.ITEM.get(Identifier.of("polyfactory:chain_lift")))
+                    .name(byMiniMessage("<pink>리프트 작동기</pink>"))
+                    .descriptions(List.of(
+                            byMiniMessage("Kitchen 맵에서만 사용할 수 있습니다. (지금은)"),
+                            byMiniMessage("사슬 축에 우클릭하면 리프트가 생성됩니다."),
+                            byMiniMessage("구매 비용 : 1 포인트")
+                    ))
+                    .point(1)
+                    .build(),
+            new ShopElement.Builder()
+                    .item(Items.WIND_CHARGE)
+                    .name(byMiniMessage("돌풍구"))
+                    .descriptions(List.of(
+                            byMiniMessage("문재인 게임 시작"),
+                            byMiniMessage("2포")
+                    ))
+                    .point(2)
                     .build()
     );
 

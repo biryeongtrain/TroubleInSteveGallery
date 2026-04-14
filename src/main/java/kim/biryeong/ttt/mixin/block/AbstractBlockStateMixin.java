@@ -39,39 +39,39 @@ public class AbstractBlockStateMixin {
 
     @Inject(method = "updateNeighbors*", at = @At("HEAD"), cancellable = true)
     private void cancelNeighbors(WorldAccess world, BlockPos pos, int flags, CallbackInfo ci) {
-        if (world instanceof RuntimeWorld) {
-            ci.cancel();
-        }
+//        if (world instanceof RuntimeWorld) {
+//            ci.cancel();
+//        }
     }
 
     @Inject(method = "scheduledTick", at = @At("HEAD"), cancellable = true)
     private void cancelScheduledTick(ServerWorld world, BlockPos pos, Random random, CallbackInfo ci) {
-        if (world instanceof RuntimeWorld) {
-            ci.cancel();
-        }
+//        if (world instanceof RuntimeWorld) {
+//            ci.cancel();
+//        }
     }
 
     @Inject(method = "canPlaceAt", at = @At("HEAD"), cancellable = true)
     private void passCanPlaceAt(WorldView world, BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
-        if (world instanceof RuntimeWorld) {
-            cir.setReturnValue(true);
-        }
+//        if (world instanceof RuntimeWorld) {
+//            cir.setReturnValue(true);
+//        }
     }
 
     @Inject(method = "randomTick", at = @At("HEAD"), cancellable = true)
     private void cancelRandomTick(ServerWorld world, BlockPos pos, Random random, CallbackInfo ci) {
-        if (world instanceof RuntimeWorld) {
-            ci.cancel();
-        }
+//        if (world instanceof RuntimeWorld) {
+//            ci.cancel();
+//        }
     }
 
     @Inject(method = "canReplace", at = @At("HEAD"), cancellable = true)
     private void setCanReplace(ItemPlacementContext context, CallbackInfoReturnable<Boolean> cir) {
-        World world = context.getWorld();
-        BlockPos pos = context.getBlockPos();
-        VoxelShape shape = world.getBlockState(pos).getOutlineShape(world, pos);
-        if (world instanceof RuntimeWorld && shape.isEmpty()) {
-            cir.setReturnValue(false);
-        }
+//        World world = context.getWorld();
+//        BlockPos pos = context.getBlockPos();
+//        VoxelShape shape = world.getBlockState(pos).getOutlineShape(world, pos);
+//        if (world instanceof RuntimeWorld && shape.isEmpty()) {
+//            cir.setReturnValue(false);
+//        }
     }
 }
