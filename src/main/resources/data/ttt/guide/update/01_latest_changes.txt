@@ -3,6 +3,15 @@
 title=최신 업데이트
 ### EndSection: PageInfo
 
+###Header: v0.6.0 - HUD / Gameplay Update
+###Align: Left
+- 기본 사이드바와 시체 정보를 <yellow>display-hud</yellow> 기반 HUD로 이전했습니다.
+- 좌상단에 최근 <yellow>지목 기록</yellow>과 누적 지목 TOP 3가 표시됩니다.
+- 지목 기록은 최대 8개까지 표시되며, 2분이 지나거나 더 오래된 기록부터 사라집니다.
+- 시체 정보에 <yellow>사망 시점</yellow>이 추가되어 약 몇 초 전에 사망했는지 확인할 수 있습니다.
+###Item: ttt:traitor_disruptor - 교란기 : <red>트레이터 전용 아이템</red> 주변 16블록 내 생존 비-트레이터의 시야를 10초간 교란합니다. 사용 성공 시 15초 쿨타임이 적용됩니다.
+<nl>
+
 ###Header: v0.5.0 - Map Update
 ###Align: Left
 <bold> - 맵 수정

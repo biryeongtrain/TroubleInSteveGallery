@@ -14,7 +14,6 @@ import kim.biryeong.ttt.ui.dialog.TTTDialogs;
 import kim.biryeong.ttt.ui.dialog.body.AlignedMessage;
 import kim.biryeong.ttt.ui.dialog.body.HeaderMessage;
 import kim.biryeong.ttt.ui.dialog.body.ImageBody;
-import kim.biryeong.ttt.ui.sidebar.GameDefaultSidebar;
 import kim.biryeong.ttt.util.MinimapClientModPacketDetector;
 import kim.biryeong.ttt.util.Sounds;
 import net.fabricmc.api.ModInitializer;

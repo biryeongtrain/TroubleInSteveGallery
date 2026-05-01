@@ -121,7 +121,7 @@ dependencies {
 
     modCompileOnly("maven.modrinth:journeymap:1.21.8-6.0.0-beta.52+fabric")
     modCompileOnly("maven.modrinth:xaeros-minimap:fabric-1.21.8-25.3.10")
-    modCompileOnly("maven.modrinth:polyfactory:0.8.2+1.21.8")
+    modImplementation("maven.modrinth:polyfactory:0.8.2+1.21.8")
 //    modRuntimeOnly("eu.pb4:PolyFactory:0.8.2+1.21.8") {
 //        exclude group: "net.fabricmc.fabric-api", module: "fabric-api"
 //        exclude group: "me.lucko", module: "fabric-permissions-api"
@@ -129,6 +129,7 @@ dependencies {
 //    }
     modImplementation("eu.pb4:factorytools:0.7.5+1.21.8")
     modRuntimeOnly('com.kneelawk.graphlib:graphlib-core-fabric:2.0.3-beta.1+1.21.5')
+    modImplementation include("kim.biryeong:danta-shader:1.0.2+1.21.8")
 }
 
 configurations.configureEach {

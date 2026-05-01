@@ -59,14 +59,18 @@ public final class Events {
     private static void registerConnectionEvents() {
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             GameManager manager = GameManager.getInstance();
+            AvatarTextRenderer.clearSmallAvatarCache(
+                    handler.player.getUuid(),
+                    handler.player.getGameProfile().getName()
+            );
             manager.onPlayerJoined(handler.player);
-            GameManager.DEFAULT_SIDEBAR.addPlayer(handler);
 
             GameMode mode = manager.resolveJoinGameMode();
             handler.player.changeGameMode(mode);
 
             InGamePlayerInfoProvider playerInfo = (InGamePlayerInfoProvider) handler.getPlayer();
             playerInfo.tts$setRole(Role.SPECTATOR);
+            manager.addRoundHudPlayer(handler.player);
             MinimapClientModPacketDetector.onPlayerJoined(handler.player);
             AvatarTextRenderer.prefetchSmallAvatarAsync(
                     handler.player.getUuid(),
@@ -80,6 +84,11 @@ public final class Events {
 
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             MinimapClientModPacketDetector.onPlayerDisconnected(handler.player);
+            AvatarTextRenderer.clearSmallAvatarCache(
+                    handler.player.getUuid(),
+                    handler.player.getGameProfile().getName()
+            );
+            GameManager.getInstance().removeRoundHudPlayer(handler.player);
             GameManager.getInstance().onPlayerLeft(handler.player);
         });
     }
@@ -198,6 +207,7 @@ public final class Events {
             if (manager.getCurrentPhase().isInProgress()) {
                 manager.tick();
             }
+            manager.tickRoundHud();
             manager.tickRoundTimerBossBar();
         });
 

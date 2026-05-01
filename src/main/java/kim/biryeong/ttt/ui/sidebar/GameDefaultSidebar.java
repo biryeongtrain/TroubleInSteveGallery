@@ -6,6 +6,7 @@ import eu.pb4.sidebars.api.lines.SuppliedSidebarLine;
 import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
+import kim.biryeong.ttt.ui.hud.RoundHudFormatter;
 import net.minecraft.scoreboard.number.BlankNumberFormat;
 import net.minecraft.text.Text;
 import net.minecraft.world.GameMode;
@@ -69,15 +70,14 @@ public class GameDefaultSidebar extends Sidebar {
     }
 
     static boolean shouldShowConfirmedRemainingCount(Role role, GameMode gameMode) {
-        return gameMode != GameMode.SPECTATOR && (role == Role.INNOCENT || role == Role.DETECTIVE);
+        return RoundHudFormatter.shouldShowConfirmedRemainingCount(role, gameMode);
     }
 
     static String formatRemainingParticipantCount(Role role, GameMode gameMode, int aliveCount, int confirmedCount) {
-        int displayedCount = shouldShowConfirmedRemainingCount(role, gameMode) ? confirmedCount : aliveCount;
-        return displayedCount + "명";
+        return RoundHudFormatter.formatRemainingParticipantCount(role, gameMode, aliveCount, confirmedCount);
     }
 
     static String resolveRemainingParticipantCountColor(Role role, GameMode gameMode) {
-        return shouldShowConfirmedRemainingCount(role, gameMode) ? "gray" : "yellow";
+        return RoundHudFormatter.resolveRemainingParticipantCountColor(role, gameMode);
     }
 }

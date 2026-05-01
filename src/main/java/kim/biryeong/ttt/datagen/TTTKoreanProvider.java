@@ -20,5 +20,9 @@ public class TTTKoreanProvider extends FabricLanguageProvider {
         translationBuilder.add(ModItems.BAMBOO_DAGGER, "죽창");
         translationBuilder.add(ModItems.ROLE_CHECKER, "직업 확인기");
         translationBuilder.add(ModItems.SUICIDE_BOMB, "자살 폭탄");
+        translationBuilder.add(ModItems.NORMAL_SWORD, "검");
+        translationBuilder.add(ModItems.DAGGER, "단검");
+        translationBuilder.add(ModItems.LONG_RANGED_SWORD, "대검");
+        translationBuilder.add(ModItems.TRAITOR_DISRUPTOR, "교란기");
     }
 }

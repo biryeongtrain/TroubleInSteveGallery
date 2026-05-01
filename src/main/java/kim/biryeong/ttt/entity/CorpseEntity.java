@@ -10,14 +10,12 @@ import de.tomalbrc.danse.registry.PlayerModelRegistry;
 import eu.pb4.polymer.virtualentity.api.attachment.EntityAttachment;
 import eu.pb4.polymer.virtualentity.api.elements.*;
 import eu.pb4.polymer.virtualentity.mixin.accessors.EntityAccessor;
-import eu.pb4.sidebars.api.SidebarInterface;
-import eu.pb4.sidebars.impl.SidebarHolder;
 import kim.biryeong.ttt.TroubleInTerroristTownMod;
 import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.item.ModItems;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
-import kim.biryeong.ttt.ui.sidebar.CorpseSidebar;
+import kim.biryeong.ttt.ui.hud.CorpseHud;
 import kim.biryeong.ttt.util.AvatarTextRenderer;
 import kim.biryeong.ttt.util.Sounds;
 import kim.biryeong.ttt.util.explosion.ExplosionUtil;
@@ -39,7 +37,6 @@ import net.minecraft.world.GameMode;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -59,6 +56,7 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
     private boolean killerDiscoveryAnnounced = false;
     private boolean isSabotaged = false;
     private UUID saboturedBy = null;
+    private int deathElapsedSeconds = 0;
 
     public CorpseEntity(EntityType<CorpseEntity> type, World world) {
         super(type, world);
@@ -101,6 +99,7 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
         entity.fetchGameProfile(entity::setProfile);
         entity.role = ((InGamePlayerInfoProvider) player).tts$getRole();
         entity.damageSource = source;
+        entity.deathElapsedSeconds = GameManager.getInstance().getRoundElapsedSeconds();
         entity.setPosition(player.getSyncedPos());
         return entity;
     }
@@ -200,13 +199,7 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
 
         this.tryAnnounceKillerDiscovery(serverPlayer);
 
-        SidebarHolder sidebarHolder = SidebarHolder.of(serverPlayer.networkHandler);
-        Optional<SidebarInterface> hasSidebar = sidebarHolder.sidebarApi$getAll().stream().filter(sidebar -> sidebar instanceof CorpseSidebar).findAny();
-
-        hasSidebar.ifPresent(sidebarHolder::sidebarApi$remove);
-
-        var sidebar = new CorpseSidebar(this, serverPlayer);
-
+        CorpseHud.show(this, serverPlayer);
 
         if (player.getMainHandStack().getItem() == Items.STICK) {
         }
@@ -344,6 +337,10 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
 
     public @Nullable DamageSource getDamageSource() {
         return damageSource;
+    }
+
+    public int getDeathElapsedSeconds() {
+        return deathElapsedSeconds;
     }
 
     {

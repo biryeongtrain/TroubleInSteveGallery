@@ -111,6 +111,13 @@ public class ModItems {
 
     public static final Item CORPSE_SABOTAGE = register("corpse_sabotage", CorpseSabotageItem::new, new Item.Settings().maxCount(1));
 
+    public static final Item TRAITOR_DISRUPTOR = register("traitor_disruptor", TraitorDisruptorItem::new,
+            new Item.Settings()
+                    .maxCount(1)
+                    .component(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, true)
+                    .component(DataComponentTypes.USE_COOLDOWN, new UseCooldownComponent(15))
+    );
+
     public static Item register(String name, Function<Item.Settings, Item> itemFactory, Item.Settings settings) {
         RegistryKey<Item> itemKey = RegistryKey.of(RegistryKeys.ITEM, Identifier.of(TroubleInTerroristTownMod.MOD_ID, name));
         Item item = itemFactory.apply(settings.registryKey(itemKey));

@@ -1,8 +1,6 @@
 package kim.biryeong.ttt.mixin;
 
 import com.mojang.serialization.Codec;
-import eu.pb4.sidebars.api.SidebarInterface;
-import eu.pb4.sidebars.impl.SidebarHolder;
 import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.player.ItemLoadout;
 import kim.biryeong.ttt.player.ItemLoadouts;
@@ -10,7 +8,6 @@ import kim.biryeong.ttt.player.duck.InGameEventProvider;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.duck.SuicideBombInfo;
 import kim.biryeong.ttt.player.role.Role;
-import kim.biryeong.ttt.ui.sidebar.CorpseSidebar;
 import kim.biryeong.ttt.util.explosion.ExplosionUtil;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -27,14 +24,10 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.Optional;
-
 @Mixin(ServerPlayerEntity.class)
 public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGameEventProvider {
     @Shadow
     public ServerPlayNetworkHandler networkHandler;
-    @Unique
-    private int sidebarDisplayedTicks = 0;
     @Unique
     private Role tts$role = Role.SPECTATOR;
     @Unique
@@ -123,7 +116,7 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
 
     @Override
     public void tts$clearSidebarTime() {
-        this.sidebarDisplayedTicks = 0;
+        // Kept for InGamePlayerInfoProvider compatibility after corpse UI moved to display-hud.
     }
 
     @Override
@@ -156,15 +149,6 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
 
     @Inject(method = "tick", at = @At("TAIL"))
     private void tts$tick(CallbackInfo ci) {
-        var holder = SidebarHolder.of(this.networkHandler);
-        Optional<SidebarInterface> hasSidebar = holder.sidebarApi$getAll().stream().filter(sidebar -> sidebar instanceof CorpseSidebar).findAny();
-        if (hasSidebar.isPresent()) {
-            if (this.sidebarDisplayedTicks == 100) {
-                holder.sidebarApi$remove(hasSidebar.get());
-                this.sidebarDisplayedTicks = 0;
-            }
-            this.sidebarDisplayedTicks++;
-        }
         if (!GameManager.getInstance().isGameStarted()) {
             return;
         }

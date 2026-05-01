@@ -242,6 +242,18 @@ public class ShopUtil {
                     ))
                     .point(9)
                     .build()
+            ,
+            new ShopElement.Builder()
+                    .item(ModItems.TRAITOR_DISRUPTOR)
+                    .name(byMiniMessage("<red>교란기</red>"))
+                    .descriptions(List.of(
+                            byMiniMessage("주변 생존 비-트레이터의 시야를 10초간 교란합니다."),
+                            byMiniMessage("직접 피해는 없지만 추격, 조사, 지목 타이밍을 흐릴 수 있습니다."),
+                            byMiniMessage("범위 : 16블록"),
+                            byMiniMessage("구매 비용 : 6 포인트")
+                    ))
+                    .point(6)
+                    .build()
     );
 
     public static final List<ShopElement> DETECTIVE_ENTRIES = List.of(

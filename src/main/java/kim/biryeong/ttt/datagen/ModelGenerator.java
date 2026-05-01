@@ -23,5 +23,6 @@ public class ModelGenerator extends FabricModelProvider {
         itemModelGenerator.register(ModItems.DNA_SCANNER, Models.GENERATED);
         itemModelGenerator.register(ModItems.TELEPORTER, Models.GENERATED);
         itemModelGenerator.register(ModItems.SUICIDE_BOMB, Models.GENERATED);
+        itemModelGenerator.register(ModItems.TRAITOR_DISRUPTOR, Models.GENERATED);
     }
 }

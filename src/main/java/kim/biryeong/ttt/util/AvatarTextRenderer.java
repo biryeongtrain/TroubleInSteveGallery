@@ -28,6 +28,7 @@ public final class AvatarTextRenderer {
     private static final int SMALL_AVATAR_SIZE = 17;
     private static final String DEFAULT_AVATAR_KEY = "Steve";
     private static final Map<AvatarCacheKey, Text> SMALL_AVATAR_CACHE = new ConcurrentHashMap<>();
+    private static final Map<AvatarCacheKey, Integer> SMALL_AVATAR_CACHE_GENERATION = new ConcurrentHashMap<>();
     private static final Set<AvatarCacheKey> SMALL_AVATAR_IN_FLIGHT = ConcurrentHashMap.newKeySet();
     private static final ExecutorService PREFETCH_EXECUTOR = Executors.newFixedThreadPool(2, runnable -> {
         Thread thread = new Thread(runnable, "ttt-avatar-prefetch");
@@ -71,6 +72,21 @@ public final class AvatarTextRenderer {
         }
     }
 
+    /**
+     * Clears cached small avatar components for a player so changed skins are reloaded on the next join.
+     */
+    public static void clearSmallAvatarCache(@Nullable UUID uuid, @Nullable String keyOrName) {
+        if (uuid != null) {
+            clearAvatarByKey(uuid.toString(), false);
+            clearAvatarByKey(uuid.toString(), true);
+        }
+
+        if (keyOrName != null && !keyOrName.isBlank()) {
+            clearAvatarByKey(keyOrName, false);
+            clearAvatarByKey(keyOrName, true);
+        }
+    }
+
     private static @Nullable Text resolveAvatarByUuid(@Nullable UUID uuid, boolean flipped) {
         if (uuid == null) {
             return null;
@@ -110,10 +126,11 @@ public final class AvatarTextRenderer {
             return;
         }
 
+        int generation = avatarGeneration(cacheKey);
         PREFETCH_EXECUTOR.execute(() -> {
             try {
                 Text renderedAvatar = renderSmallAvatar(key, flipped);
-                if (renderedAvatar != null) {
+                if (renderedAvatar != null && avatarGeneration(cacheKey) == generation) {
                     SMALL_AVATAR_CACHE.put(cacheKey, renderedAvatar);
                 }
             } catch (Exception exception) {
@@ -122,6 +139,17 @@ public final class AvatarTextRenderer {
                 SMALL_AVATAR_IN_FLIGHT.remove(cacheKey);
             }
         });
+    }
+
+    private static void clearAvatarByKey(String key, boolean flipped) {
+        AvatarCacheKey cacheKey = new AvatarCacheKey(key, flipped);
+        SMALL_AVATAR_CACHE.remove(cacheKey);
+        SMALL_AVATAR_IN_FLIGHT.remove(cacheKey);
+        SMALL_AVATAR_CACHE_GENERATION.merge(cacheKey, 1, Integer::sum);
+    }
+
+    private static int avatarGeneration(AvatarCacheKey cacheKey) {
+        return SMALL_AVATAR_CACHE_GENERATION.getOrDefault(cacheKey, 0);
     }
 
     private static Text resolveDefaultAvatar(boolean flipped) {

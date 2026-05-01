@@ -20,5 +20,9 @@ public class TTTEnglishProvider extends FabricLanguageProvider {
         translationBuilder.add(ModItems.BAMBOO_DAGGER, "Bamboo Dagger");
         translationBuilder.add(ModItems.ROLE_CHECKER, "Role Checker");
         translationBuilder.add(ModItems.SUICIDE_BOMB, "Suicide Bomb");
+        translationBuilder.add(ModItems.NORMAL_SWORD, "Sword");
+        translationBuilder.add(ModItems.DAGGER, "Dagger");
+        translationBuilder.add(ModItems.LONG_RANGED_SWORD, "BroadSword");
+        translationBuilder.add(ModItems.TRAITOR_DISRUPTOR, "Disruptor");
     }
 }

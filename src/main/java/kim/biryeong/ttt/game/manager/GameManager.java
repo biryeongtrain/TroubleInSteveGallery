@@ -14,7 +14,7 @@ import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.ui.dialog.log.DeathCombatLogDialog;
 import kim.biryeong.ttt.ui.dialog.log.RoundSummaryDialog;
-import kim.biryeong.ttt.ui.sidebar.GameDefaultSidebar;
+import kim.biryeong.ttt.ui.hud.RoundHudManager;
 import kim.biryeong.ttt.util.Scheduler;
 import kim.biryeong.ttt.util.ShopUtil;
 import kim.biryeong.ttt.util.Sounds;
@@ -39,6 +39,7 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.text.ClickEvent;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.random.RandomSeed;
@@ -88,6 +89,8 @@ public final class GameManager {
                     + "<yellow>에 오신 것을 환영합니다.";
     private static final String FIRST_JOIN_WELCOME_LINE_2 =
             "<yellow>처음 플레이하는 유저는 <green>G <yellow>키를 눌러 가이드를 읽어주세요.";
+    private static final String UPDATE_NOTICE_LINE =
+            "<yellow>[업데이트]</yellow> 새 변경사항이 있습니다. ";
     private static final List<SoundEvent> LOBBY_MORNING_BGM = List.of(
             Sounds.MORNING_BGM_2,
             Sounds.MORNING_BGM_3,
@@ -108,6 +111,7 @@ public final class GameManager {
     private final Object2IntOpenHashMap<UUID> roleEntropyByUuid = new Object2IntOpenHashMap<>();
     private final Set<UUID> shopGuidePlayers = new HashSet<>();
     private final RoundTimerBossBarManager roundTimerBossBarManager = new RoundTimerBossBarManager();
+    private final RoundHudManager roundHudManager = new RoundHudManager();
 
     final GameDataManager gameDataManager = new GameDataManager(this);
     final GameInstanceManager gameInstanceManager = new GameInstanceManager();
@@ -118,7 +122,6 @@ public final class GameManager {
     static final Logger LOGGER = LoggerFactory.getLogger("TTT_GameManager");
     static MinecraftAudiences ADVENTURE;
 
-    public static GameDefaultSidebar DEFAULT_SIDEBAR;
     boolean debugMode = false;
     TTTMap currentMap;
     TTTMap spawnMap;
@@ -143,7 +146,6 @@ public final class GameManager {
     public static void setServer(MinecraftServer initializedServer) {
         server = initializedServer;
         ADVENTURE = MinecraftServerAudiences.of(server);
-        DEFAULT_SIDEBAR = new GameDefaultSidebar();
 
         GameManager manager = getInstance();
         manager.reloadMapData(manager.getAllMapIds());
@@ -761,6 +763,7 @@ public final class GameManager {
         }
         ensurePlayerEntropyInitialized(player.getUuid());
         sendFirstJoinWelcomeMessage(player);
+        sendUpdateNoticeMessage(player);
         this.gameInstanceManager.onAudienceChanged();
     }
 
@@ -780,6 +783,20 @@ public final class GameManager {
 
         player.sendMessage(Text.literal("\n").append(byMiniMessage(FIRST_JOIN_WELCOME_LINE_1)), false);
         player.sendMessage(byMiniMessage(FIRST_JOIN_WELCOME_LINE_2), false);
+    }
+
+    private static void sendUpdateNoticeMessage(ServerPlayerEntity player) {
+        Text openUpdateGuide = Text.literal("[업데이트 내역 열기]")
+                .styled(style -> style
+                        .withColor(0x55FF55)
+                        .withClickEvent(new ClickEvent.RunCommand("/tts guide update"))
+                        .withUnderline(true));
+        player.sendMessage(
+                byMiniMessage(UPDATE_NOTICE_LINE)
+                        .copy()
+                        .append(openUpdateGuide),
+                false
+        );
     }
 
     public void onPlayerLeft(ServerPlayerEntity player) {
@@ -832,6 +849,22 @@ public final class GameManager {
         }
 
         this.roundTimerBossBarManager.tick(server, this.currentPhase.get(), this.getLeftTicks());
+    }
+
+    public void addRoundHudPlayer(ServerPlayerEntity player) {
+        this.roundHudManager.addPlayer(player);
+    }
+
+    public void removeRoundHudPlayer(ServerPlayerEntity player) {
+        this.roundHudManager.removePlayer(player);
+    }
+
+    public void tickRoundHud() {
+        if (server == null) {
+            return;
+        }
+
+        this.roundHudManager.tick(server, this);
     }
 
     public void tickGuideHints() {
@@ -959,6 +992,10 @@ public final class GameManager {
 
     public int getConfirmedRemainingParticipantCount() {
         return this.gameInstanceManager.getConfirmedRemainingParticipantCount();
+    }
+
+    public int getRoundElapsedSeconds() {
+        return this.gameInstanceManager.getElapsedTicks() / 20;
     }
 
     /**
