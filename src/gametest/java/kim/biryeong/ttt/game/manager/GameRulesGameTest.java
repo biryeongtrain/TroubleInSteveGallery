@@ -30,7 +30,7 @@ public final class GameRulesGameTest {
         context.assertEquals(0, GameManager.calculateTraitorCount(0), Text.literal("traitors for 0 players"));
         context.assertEquals(1, GameManager.calculateTraitorCount(4), Text.literal("traitors for 4 players"));
         context.assertEquals(2, GameManager.calculateTraitorCount(8), Text.literal("traitors for 8 players"));
-        context.assertEquals(4, GameManager.calculateTraitorCount(12), Text.literal("traitors for 12 players"));
+        context.assertEquals(3, GameManager.calculateTraitorCount(12), Text.literal("traitors for 12 players"));
         context.complete();
     }
 
