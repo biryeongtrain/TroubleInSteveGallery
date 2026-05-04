@@ -20,11 +20,14 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.damage.DamageTypes;
 import net.minecraft.entity.passive.PassiveEntity;
+import net.minecraft.entity.projectile.ProjectileUtil;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 import xyz.nucleoid.stimuli.Stimuli;
 import xyz.nucleoid.stimuli.event.EventResult;
@@ -44,6 +47,7 @@ import java.util.UUID;
 
 public final class Events {
     private static final int QUICK_CHAT_COOLDOWN_TICKS = 100;
+    private static final double QUICK_TARGET_RANGE = 10.0;
     private static final Map<UUID, Long> QUICK_CHAT_LAST_USED_TICKS = new HashMap<>();
 
     private Events() {
@@ -243,10 +247,8 @@ public final class Events {
                 return;
             }
 
-            var result = player.raycast(10, 1, false);
-            if (result.getType() != HitResult.Type.ENTITY
-                    || !(result instanceof EntityHitResult entityHitResult)
-                    || !(entityHitResult.getEntity() instanceof ServerPlayerEntity target)) {
+            ServerPlayerEntity target = findLookedAtPlayer(player);
+            if (target == null) {
                 return;
             }
             long tick = player.getServer().getTicks();
@@ -278,6 +280,36 @@ public final class Events {
 
     private static ServerPlayerEntity getRecentDamagePlayer(Entity attacker) {
         return attacker instanceof ServerPlayerEntity player ? player : null;
+    }
+
+    private static ServerPlayerEntity findLookedAtPlayer(ServerPlayerEntity player) {
+        Vec3d start = player.getCameraPosVec(1.0F);
+        Vec3d rotation = player.getRotationVec(1.0F);
+        Vec3d end = start.add(rotation.multiply(QUICK_TARGET_RANGE));
+        Box searchBox = player.getBoundingBox()
+                .stretch(rotation.multiply(QUICK_TARGET_RANGE))
+                .expand(1.0D);
+        EntityHitResult entityHit = ProjectileUtil.raycast(
+                player,
+                start,
+                end,
+                searchBox,
+                entity -> entity instanceof ServerPlayerEntity target
+                        && !target.getUuid().equals(player.getUuid())
+                        && !target.isSpectator(),
+                QUICK_TARGET_RANGE * QUICK_TARGET_RANGE
+        );
+        if (entityHit == null || !(entityHit.getEntity() instanceof ServerPlayerEntity target)) {
+            return null;
+        }
+
+        HitResult blockHit = player.raycast(QUICK_TARGET_RANGE, 1.0F, false);
+        if (blockHit.getType() != HitResult.Type.MISS
+                && start.squaredDistanceTo(blockHit.getPos()) <= start.squaredDistanceTo(entityHit.getPos())) {
+            return null;
+        }
+
+        return target;
     }
 
     static boolean shouldRouteToSpectatorChat(GameManager.Phase phase, boolean senderAlive) {
