@@ -20,6 +20,8 @@ public interface InGamePlayerInfoProvider {
     void tts$setDenyToPlay(boolean denyToPlay);
     void tts$setTipsEnabled(boolean enabled);
     void tts$setBgmEnabled(boolean enabled);
+    void tts$setSidebarEnabled(boolean enabled);
+    void tts$setDisplayHudEnabled(boolean enabled);
     /**
      * Updates the currently selected item loadout for this player.
      */
@@ -30,6 +32,8 @@ public interface InGamePlayerInfoProvider {
     boolean tts$denyToPlay();
     boolean tts$tipsEnabled();
     boolean tts$bgmEnabled();
+    boolean tts$sidebarEnabled();
+    boolean tts$displayHudEnabled();
     void tts$clearSidebarTime();
     ItemLoadout tts$getItemLoadout();
 

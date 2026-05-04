@@ -16,6 +16,7 @@ import kim.biryeong.ttt.item.ModItems;
 import kim.biryeong.ttt.player.duck.InGamePlayerInfoProvider;
 import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.ui.hud.CorpseHud;
+import kim.biryeong.ttt.ui.sidebar.CorpseSidebar;
 import kim.biryeong.ttt.util.AvatarTextRenderer;
 import kim.biryeong.ttt.util.Sounds;
 import kim.biryeong.ttt.util.explosion.ExplosionUtil;
@@ -199,7 +200,13 @@ public class CorpseEntity extends StatuePlayerModelEntity implements AnimatedEnt
 
         this.tryAnnounceKillerDiscovery(serverPlayer);
 
-        CorpseHud.show(this, serverPlayer);
+        InGamePlayerInfoProvider viewerInfo = (InGamePlayerInfoProvider) serverPlayer;
+        if (viewerInfo.tts$displayHudEnabled()) {
+            CorpseHud.show(this, serverPlayer);
+        }
+        if (viewerInfo.tts$sidebarEnabled()) {
+            new CorpseSidebar(this, serverPlayer);
+        }
 
         if (player.getMainHandStack().getItem() == Items.STICK) {
         }

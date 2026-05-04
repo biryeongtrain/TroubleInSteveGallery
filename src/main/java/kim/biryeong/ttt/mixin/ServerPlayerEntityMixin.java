@@ -39,6 +39,10 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
     @Unique
     private boolean tts$bgmEnabled = true;
     @Unique
+    private boolean tts$sidebarEnabled = false;
+    @Unique
+    private boolean tts$displayHudEnabled = true;
+    @Unique
     private  SuicideBombInfo tts$bombInfo = new SuicideBombInfo();
     @Unique
     private boolean ttt$isInCombat = false;
@@ -73,6 +77,18 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
     @Override
     public void tts$setBgmEnabled(boolean enabled) {
         this.tts$bgmEnabled = enabled;
+    }
+
+    @Override
+    public void tts$setSidebarEnabled(boolean enabled) {
+        this.tts$sidebarEnabled = enabled;
+        this.tts$displayHudEnabled = !enabled;
+    }
+
+    @Override
+    public void tts$setDisplayHudEnabled(boolean enabled) {
+        this.tts$displayHudEnabled = enabled;
+        this.tts$sidebarEnabled = !enabled;
     }
 
     @Override
@@ -112,6 +128,16 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
     @Override
     public boolean tts$bgmEnabled() {
         return this.tts$bgmEnabled;
+    }
+
+    @Override
+    public boolean tts$sidebarEnabled() {
+        return this.tts$sidebarEnabled;
+    }
+
+    @Override
+    public boolean tts$displayHudEnabled() {
+        return this.tts$displayHudEnabled;
     }
 
     @Override
@@ -192,6 +218,8 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
         view.put("tts$loadout", Identifier.CODEC, this.tts$loadout.loadoutId());
         view.put("tts$tips_enabled", Codec.BOOL, this.tts$tipsEnabled);
         view.put("tts$bgm_enabled", Codec.BOOL, this.tts$bgmEnabled);
+        view.put("tts$sidebar_enabled", Codec.BOOL, this.tts$sidebarEnabled);
+        view.put("tts$display_hud_enabled", Codec.BOOL, this.tts$displayHudEnabled);
     }
 
     @Inject(method = "readCustomData", at = @At("HEAD"))
@@ -199,5 +227,9 @@ public class ServerPlayerEntityMixin implements InGamePlayerInfoProvider, InGame
         this.tts$loadout = ItemLoadouts.get(view.read("tts$loadout", Identifier.CODEC).orElse(ItemLoadouts.DEFAULT_LOADOUT_KEY));
         this.tts$tipsEnabled = view.read("tts$tips_enabled", Codec.BOOL).orElse(true);
         this.tts$bgmEnabled = view.read("tts$bgm_enabled", Codec.BOOL).orElse(true);
+        boolean storedSidebarEnabled = view.read("tts$sidebar_enabled", Codec.BOOL).orElse(false);
+        boolean storedDisplayHudEnabled = view.read("tts$display_hud_enabled", Codec.BOOL).orElse(true);
+        this.tts$sidebarEnabled = storedSidebarEnabled || !storedDisplayHudEnabled;
+        this.tts$displayHudEnabled = !this.tts$sidebarEnabled;
     }
 }

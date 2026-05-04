@@ -189,6 +189,26 @@ public class CommandInitializer {
                 .then(CommandManager.argument("enabled", BoolArgumentType.bool())
                         .executes(ctx -> setBgmEnabled(ctx.getSource(), BoolArgumentType.getBool(ctx, "enabled"))))
                 .build();
+        LiteralCommandNode<ServerCommandSource> sidebar = CommandManager.literal("sidebar")
+                .then(CommandManager.argument("enabled", BoolArgumentType.bool())
+                        .executes(ctx -> setSidebarEnabled(ctx.getSource(), BoolArgumentType.getBool(ctx, "enabled"))))
+                .build();
+        LiteralCommandNode<ServerCommandSource> displayHud = CommandManager.literal("display_hud")
+                .then(CommandManager.argument("enabled", BoolArgumentType.bool())
+                        .executes(ctx -> setDisplayHudEnabled(ctx.getSource(), BoolArgumentType.getBool(ctx, "enabled"))))
+                .build();
+        LiteralCommandNode<ServerCommandSource> displayHudAlias = CommandManager.literal("display-hud")
+                .then(CommandManager.argument("enabled", BoolArgumentType.bool())
+                        .executes(ctx -> setDisplayHudEnabled(ctx.getSource(), BoolArgumentType.getBool(ctx, "enabled"))))
+                .build();
+        LiteralCommandNode<ServerCommandSource> ui = CommandManager.literal("ui")
+                .then(CommandManager.literal("legacy")
+                        .executes(ctx -> setUiMode(ctx.getSource(), true)))
+                .then(CommandManager.literal("display_hud")
+                        .executes(ctx -> setUiMode(ctx.getSource(), false)))
+                .then(CommandManager.literal("display-hud")
+                        .executes(ctx -> setUiMode(ctx.getSource(), false)))
+                .build();
 
         LiteralCommandNode<ServerCommandSource> guide = CommandManager.literal("guide")
                 .executes(ctx -> openGuideMenu(ctx.getSource()))
@@ -344,6 +364,10 @@ public class CommandInitializer {
         userRoot.addChild(spectatorModeAlias);
         userRoot.addChild(tips);
         userRoot.addChild(bgm);
+        userRoot.addChild(sidebar);
+        userRoot.addChild(displayHud);
+        userRoot.addChild(displayHudAlias);
+        userRoot.addChild(ui);
         userRoot.addChild(guide);
         userRoot.addChild(accuse);
         userRoot.addChild(stats);
@@ -825,6 +849,43 @@ public class CommandInitializer {
         return Command.SINGLE_SUCCESS;
     }
 
+    private static int setSidebarEnabled(ServerCommandSource source, boolean enabled) {
+        return setUiMode(source, enabled);
+    }
+
+    private static int setDisplayHudEnabled(ServerCommandSource source, boolean enabled) {
+        return setUiMode(source, !enabled);
+    }
+
+    private static int setUiMode(ServerCommandSource source, boolean useLegacySidebar) {
+        if (!source.isExecutedByPlayer()) {
+            source.sendError(Text.literal("This command can only be used by players."));
+            return 0;
+        }
+
+        ServerPlayerEntity player = source.getPlayer();
+        if (player == null) {
+            source.sendError(Text.literal("This command can only be used by players."));
+            return 0;
+        }
+
+        InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
+        info.tts$setSidebarEnabled(useLegacySidebar);
+        GameManager manager = GameManager.getInstance();
+        if (useLegacySidebar) {
+            manager.removeRoundHudPlayer(player);
+            manager.addDefaultSidebarPlayer(player);
+        } else {
+            manager.removeDefaultSidebarPlayer(player);
+            manager.addRoundHudPlayer(player);
+        }
+        source.sendFeedback(
+                () -> Text.literal("UI mode is now " + (useLegacySidebar ? "legacy sidebar." : "display HUD.")),
+                false
+        );
+        return Command.SINGLE_SUCCESS;
+    }
+
     private static int openLoadoutDialog(ServerCommandSource source) {
         if (!source.isExecutedByPlayer()) {
             source.sendError(Text.literal("이 명령어는 플레이어만 실행할 수 있습니다."));
@@ -1021,7 +1082,7 @@ public class CommandInitializer {
         return Text.literal("지목 채팅 쿨타임입니다. " + toCooldownDisplaySeconds(remainingTicks) + "초 후 다시 시도하세요.");
     }
 
-    private static int getAccuseCooldownRemainingTicks(UUID playerUuid, int currentTick) {
+    public static int getAccuseCooldownRemainingTicks(UUID playerUuid, int currentTick) {
         Integer lastUseTick = ACCUSE_LAST_USED_TICKS.get(playerUuid);
         if (lastUseTick == null) {
             return 0;
@@ -1030,7 +1091,7 @@ public class CommandInitializer {
         return calculateAccuseCooldownRemainingTicks(lastUseTick, currentTick, ACCUSE_COOLDOWN_TICKS);
     }
 
-    static Text buildAccuseBroadcastText(
+    public static Text buildAccuseBroadcastText(
             @Nullable Text senderAvatar,
             Text senderName,
             @Nullable Text targetAvatar,

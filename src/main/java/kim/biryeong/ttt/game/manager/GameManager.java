@@ -15,6 +15,7 @@ import kim.biryeong.ttt.player.role.Role;
 import kim.biryeong.ttt.ui.dialog.log.DeathCombatLogDialog;
 import kim.biryeong.ttt.ui.dialog.log.RoundSummaryDialog;
 import kim.biryeong.ttt.ui.hud.RoundHudManager;
+import kim.biryeong.ttt.ui.sidebar.GameDefaultSidebar;
 import kim.biryeong.ttt.util.Scheduler;
 import kim.biryeong.ttt.util.ShopUtil;
 import kim.biryeong.ttt.util.Sounds;
@@ -121,6 +122,7 @@ public final class GameManager {
     static MinecraftServer server;
     static final Logger LOGGER = LoggerFactory.getLogger("TTT_GameManager");
     static MinecraftAudiences ADVENTURE;
+    public static GameDefaultSidebar DEFAULT_SIDEBAR;
 
     boolean debugMode = false;
     TTTMap currentMap;
@@ -146,6 +148,7 @@ public final class GameManager {
     public static void setServer(MinecraftServer initializedServer) {
         server = initializedServer;
         ADVENTURE = MinecraftServerAudiences.of(server);
+        DEFAULT_SIDEBAR = new GameDefaultSidebar();
 
         GameManager manager = getInstance();
         manager.reloadMapData(manager.getAllMapIds());
@@ -857,6 +860,22 @@ public final class GameManager {
 
     public void removeRoundHudPlayer(ServerPlayerEntity player) {
         this.roundHudManager.removePlayer(player);
+    }
+
+    public void addDefaultSidebarPlayer(ServerPlayerEntity player) {
+        if (DEFAULT_SIDEBAR == null) {
+            return;
+        }
+
+        DEFAULT_SIDEBAR.addPlayer(player.networkHandler);
+    }
+
+    public void removeDefaultSidebarPlayer(ServerPlayerEntity player) {
+        if (DEFAULT_SIDEBAR == null) {
+            return;
+        }
+
+        DEFAULT_SIDEBAR.removePlayer(player.networkHandler);
     }
 
     public void tickRoundHud() {

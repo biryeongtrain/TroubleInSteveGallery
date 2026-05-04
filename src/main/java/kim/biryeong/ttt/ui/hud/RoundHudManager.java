@@ -13,16 +13,13 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.world.GameMode;
 
-import java.util.Comparator;
 import java.util.List;
 
 public final class RoundHudManager {
     private static final String ROUND_STATUS_ID = "ttt:round_status";
     private static final String ACCUSATION_TITLE_ID = "ttt:accusation_title";
-    private static final String ACCUSATION_SUMMARY_ID = "ttt:accusation_summary";
     private static final String ACCUSATION_LOG_ID = "ttt:accusation_log";
     private static final String LAST_TEXT_KEY = "lastText";
-    private static final String ACCUSATION_SUMMARY_LAST_TEXT_KEY = "lastAccusationSummaryText";
     private static final String ACCUSATION_LAST_TEXT_KEY = "lastAccusationText";
     private static final int STATUS_LINE_WIDTH = 230;
     private static final float STATUS_TEXT_SCALE = 146;
@@ -31,16 +28,12 @@ public final class RoundHudManager {
     private static final int ACCUSATION_VISIBLE_SECONDS = 120;
     private static final int ACCUSATION_LINE_WIDTH = 390;
     private static final int MAX_VISIBLE_ACCUSATIONS = 8;
-    private static final int MAX_VISIBLE_ACCUSATION_TARGETS = 3;
     private static final int ACCUSATION_TITLE_LINE_WIDTH = 160;
-    private static final int ACCUSATION_SUMMARY_LINE_WIDTH = 360;
     private static final float ACCUSATION_TITLE_TEXT_SCALE = 146;
-    private static final float ACCUSATION_SUMMARY_TEXT_SCALE = 102;
     private static final float ACCUSATION_TEXT_SCALE = 112;
     private static final float ACCUSATION_X = 80;
     private static final float ACCUSATION_TITLE_Y = 130;
-    private static final float ACCUSATION_SUMMARY_Y = 235;
-    private static final float ACCUSATION_Y = 470;
+    private static final float ACCUSATION_Y = 235;
 
     public void addPlayer(ServerPlayerEntity player) {
         getOrCreateStatusHud(player);
@@ -49,27 +42,30 @@ public final class RoundHudManager {
     public void removePlayer(ServerPlayerEntity player) {
         DisplayHud.removeHud(player, ROUND_STATUS_ID);
         DisplayHud.removeHud(player, ACCUSATION_TITLE_ID);
-        DisplayHud.removeHud(player, ACCUSATION_SUMMARY_ID);
         DisplayHud.removeHud(player, ACCUSATION_LOG_ID);
     }
 
     public void tick(MinecraftServer server, GameManager manager) {
         GameManager.RoundAccusationSnapshot accusationSnapshot = manager.getRoundAccusationSnapshot();
         List<GameManager.RoundAccusationEvent> recentAccusations = collectRecentAccusations(manager, accusationSnapshot);
-        List<GameManager.RoundAccusationTargetSummary> topAccusationTargets = collectTopAccusationTargets(manager, accusationSnapshot);
         String accusationTextKey = buildAccusationTextKey(recentAccusations);
-        String accusationSummaryTextKey = buildAccusationSummaryTextKey(topAccusationTargets);
         for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            InGamePlayerInfoProvider info = (InGamePlayerInfoProvider) player;
+            if (!info.tts$displayHudEnabled()) {
+                removePlayer(player);
+                continue;
+            }
+
             TextDisplayHud hud = getOrCreateStatusHud(player);
             String text = buildStatusText(manager, player);
             if (text.equals(hud.getExtraData(LAST_TEXT_KEY))) {
-                updateAccusationLog(player, topAccusationTargets, recentAccusations, accusationSummaryTextKey, accusationTextKey);
+                updateAccusationLog(player, recentAccusations, accusationTextKey);
                 continue;
             }
 
             hud.setText(GameManager.byMiniMessage(text));
             hud.setExtraData(LAST_TEXT_KEY, text);
-            updateAccusationLog(player, topAccusationTargets, recentAccusations, accusationSummaryTextKey, accusationTextKey);
+            updateAccusationLog(player, recentAccusations, accusationTextKey);
         }
     }
 
@@ -96,40 +92,17 @@ public final class RoundHudManager {
 
     private static void updateAccusationLog(
             ServerPlayerEntity player,
-            List<GameManager.RoundAccusationTargetSummary> topAccusationTargets,
             List<GameManager.RoundAccusationEvent> recentAccusations,
-            String summaryTextKey,
             String textKey
     ) {
-        if (topAccusationTargets.isEmpty() && recentAccusations.isEmpty()) {
+        if (recentAccusations.isEmpty()) {
             DisplayHud.removeHud(player, ACCUSATION_TITLE_ID);
-            DisplayHud.removeHud(player, ACCUSATION_SUMMARY_ID);
             DisplayHud.removeHud(player, ACCUSATION_LOG_ID);
             return;
         }
 
         getOrCreateAccusationTitleHud(player);
-        updateAccusationSummary(player, topAccusationTargets, summaryTextKey);
         updateRecentAccusationLog(player, recentAccusations, textKey);
-    }
-
-    private static void updateAccusationSummary(
-            ServerPlayerEntity player,
-            List<GameManager.RoundAccusationTargetSummary> topAccusationTargets,
-            String textKey
-    ) {
-        if (topAccusationTargets.isEmpty()) {
-            DisplayHud.removeHud(player, ACCUSATION_SUMMARY_ID);
-            return;
-        }
-
-        TextDisplayHud hud = getOrCreateAccusationSummaryHud(player);
-        if (textKey.equals(hud.getExtraData(ACCUSATION_SUMMARY_LAST_TEXT_KEY))) {
-            return;
-        }
-
-        hud.setText(buildAccusationSummaryText(topAccusationTargets));
-        hud.setExtraData(ACCUSATION_SUMMARY_LAST_TEXT_KEY, textKey);
     }
 
     private static void updateRecentAccusationLog(
@@ -170,27 +143,6 @@ public final class RoundHudManager {
         hud.setLocation(ACCUSATION_X, ACCUSATION_TITLE_Y, 0);
         hud.setText(GameManager.byMiniMessage("<red>지목 기록</red>"));
         hud.spawn(player, ACCUSATION_TITLE_ID);
-        return hud;
-    }
-
-    private static TextDisplayHud getOrCreateAccusationSummaryHud(ServerPlayerEntity player) {
-        DisplayHud existing = DisplayHud.getHud(player, ACCUSATION_SUMMARY_ID);
-        if (existing instanceof TextDisplayHud textHud) {
-            return textHud;
-        }
-
-        if (existing != null) {
-            existing.remove();
-        }
-
-        TextDisplayHud hud = new TextDisplayHud();
-        hud.setLineWidth(ACCUSATION_SUMMARY_LINE_WIDTH);
-        hud.setTextAlignment(DisplayEntity.TextDisplayEntity.TextAlignment.LEFT);
-        hud.setShadowToggle(true);
-        hud.setScale(ACCUSATION_SUMMARY_TEXT_SCALE, ACCUSATION_SUMMARY_TEXT_SCALE, 1);
-        hud.setViewRange(1000);
-        hud.setLocation(ACCUSATION_X, ACCUSATION_SUMMARY_Y, 0);
-        hud.spawn(player, ACCUSATION_SUMMARY_ID);
         return hud;
     }
 
@@ -284,40 +236,6 @@ public final class RoundHudManager {
         return recentEvents.subList(fromIndex, recentEvents.size());
     }
 
-    private static List<GameManager.RoundAccusationTargetSummary> collectTopAccusationTargets(
-            GameManager manager,
-            GameManager.RoundAccusationSnapshot accusationSnapshot
-    ) {
-        if (!manager.getCurrentPhase().canShowRole()) {
-            return List.of();
-        }
-
-        return accusationSnapshot.targetSummaries().stream()
-                .sorted(Comparator
-                        .comparingInt(GameManager.RoundAccusationTargetSummary::accusationCount)
-                        .reversed()
-                        .thenComparing(GameManager.RoundAccusationTargetSummary::targetName))
-                .limit(MAX_VISIBLE_ACCUSATION_TARGETS)
-                .toList();
-    }
-
-    private static Text buildAccusationSummaryText(List<GameManager.RoundAccusationTargetSummary> summaries) {
-        Text text = GameManager.byMiniMessage("<gray>누적 TOP 3</gray>");
-
-        for (GameManager.RoundAccusationTargetSummary summary : summaries) {
-            text = text.copy()
-                    .append(Text.literal("\n"))
-                    .append(prependAvatar(
-                            AvatarTextRenderer.resolveSmallAvatar(summary.targetUuid(), summary.targetName(), false),
-                            Text.literal(summary.targetName()).formatted(Formatting.RED)
-                    ))
-                    .append(Text.literal(" "))
-                    .append(Text.literal(summary.accusationCount() + "회").formatted(Formatting.YELLOW));
-        }
-
-        return text;
-    }
-
     private static Text buildAccusationLogText(List<GameManager.RoundAccusationEvent> events) {
         Text text = Text.empty();
 
@@ -329,7 +247,7 @@ public final class RoundHudManager {
             }
 
             text = text.copy()
-                    .append(Text.literal("\n\n"))
+                    .append(Text.literal("\n"))
                     .append(buildAccusationLine(event));
         }
 
@@ -372,19 +290,6 @@ public final class RoundHudManager {
                     .append(event.accuserUuid())
                     .append('|')
                     .append(event.targetUuid())
-                    .append(';');
-        }
-        return builder.toString();
-    }
-
-    private static String buildAccusationSummaryTextKey(List<GameManager.RoundAccusationTargetSummary> summaries) {
-        StringBuilder builder = new StringBuilder();
-        for (GameManager.RoundAccusationTargetSummary summary : summaries) {
-            builder.append(summary.targetUuid())
-                    .append('|')
-                    .append(summary.targetName())
-                    .append('|')
-                    .append(summary.accusationCount())
                     .append(';');
         }
         return builder.toString();
