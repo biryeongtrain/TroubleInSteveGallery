@@ -1,5 +1,7 @@
 package kim.biryeong.ttt;
 
+import kim.biryeong.gcbserver.events.PlayerKeyStateChangedEvent;
+import kim.biryeong.gcbserver.player.Key;
 import kim.biryeong.ttt.entity.CorpseEntity;
 import kim.biryeong.ttt.game.manager.GameManager;
 import kim.biryeong.ttt.player.duck.InGameEventProvider;
@@ -21,6 +23,8 @@ import net.minecraft.entity.passive.PassiveEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.util.hit.HitResult;
 import net.minecraft.world.GameMode;
 import xyz.nucleoid.stimuli.Stimuli;
 import xyz.nucleoid.stimuli.event.EventResult;
@@ -34,7 +38,14 @@ import xyz.nucleoid.stimuli.event.player.PlayerRegenerateEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerC2SPacketEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerSwapWithOffhandEvent;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 public final class Events {
+    private static final int QUICK_CHAT_COOLDOWN_TICKS = 100;
+    private static final Map<UUID, Long> QUICK_CHAT_LAST_USED_TICKS = new HashMap<>();
+
     private Events() {
         throw new IllegalStateException("Utility class");
     }
@@ -70,7 +81,12 @@ public final class Events {
 
             InGamePlayerInfoProvider playerInfo = (InGamePlayerInfoProvider) handler.getPlayer();
             playerInfo.tts$setRole(Role.SPECTATOR);
-            manager.addRoundHudPlayer(handler.player);
+            if (playerInfo.tts$displayHudEnabled()) {
+                manager.addRoundHudPlayer(handler.player);
+            }
+            if (playerInfo.tts$sidebarEnabled()) {
+                manager.addDefaultSidebarPlayer(handler.player);
+            }
             MinimapClientModPacketDetector.onPlayerJoined(handler.player);
             AvatarTextRenderer.prefetchSmallAvatarAsync(
                     handler.player.getUuid(),
@@ -89,6 +105,8 @@ public final class Events {
                     handler.player.getGameProfile().getName()
             );
             GameManager.getInstance().removeRoundHudPlayer(handler.player);
+            GameManager.getInstance().removeDefaultSidebarPlayer(handler.player);
+            QUICK_CHAT_LAST_USED_TICKS.remove(handler.player.getUuid());
             GameManager.getInstance().onPlayerLeft(handler.player);
         });
     }
@@ -219,6 +237,29 @@ public final class Events {
             GameManager manager = GameManager.getInstance();
             manager.reloadMapData(manager.getAllMapIds());
         });
+
+        PlayerKeyStateChangedEvent.EVENT.register((player, pushed, key) -> {
+            if (!pushed || (key != Key.KEY_Z && key != Key.KEY_X && key != Key.KEY_C)) {
+                return;
+            }
+
+            var result = player.raycast(10, 1, false);
+            if (result.getType() != HitResult.Type.ENTITY
+                    || !(result instanceof EntityHitResult entityHitResult)
+                    || !(entityHitResult.getEntity() instanceof ServerPlayerEntity target)) {
+                return;
+            }
+            long tick = player.getServer().getTicks();
+
+            if (key == Key.KEY_Z) {
+                player.getServer().getCommandManager().executeWithPrefix(player.getCommandSource(), "/tts accuse %s".formatted(target.getNameForScoreboard()));
+            } else if (key == Key.KEY_X) {
+                sendQuickChat(player, target, tick, "저는 %s님과 같이 있습니다.");
+            } else if (key == Key.KEY_C) {
+                sendQuickChat(player, target, tick, "%s 님은 시민입니다.");
+            }
+        });
+
     }
 
     private static void registerUiEvents() {
@@ -264,6 +305,32 @@ public final class Events {
                 .append(senderName.copy().formatted(Formatting.BLUE))
                 .append(Text.literal(": "))
                 .append(messageContent.copy());
+    }
+
+    private static void sendQuickChat(ServerPlayerEntity sender, ServerPlayerEntity target, long tick, String messageFormat) {
+        long lastUsedTick = QUICK_CHAT_LAST_USED_TICKS.getOrDefault(sender.getUuid(), (long) -QUICK_CHAT_COOLDOWN_TICKS);
+        if (tick - lastUsedTick < QUICK_CHAT_COOLDOWN_TICKS) {
+            sender.sendMessage(Text.literal("빠른 채팅은 5초마다 사용할 수 있습니다."), true);
+            return;
+        }
+
+        QUICK_CHAT_LAST_USED_TICKS.put(sender.getUuid(), tick);
+        sender.getServer().getPlayerManager().broadcast(
+                buildQuickChatText(sender, target, messageFormat),
+                false
+        );
+    }
+
+    private static Text buildQuickChatText(ServerPlayerEntity sender, ServerPlayerEntity target, String messageFormat) {
+        InGamePlayerInfoProvider senderInfo = (InGamePlayerInfoProvider) sender;
+        String senderName = sender.getGameProfile().getName();
+        String targetName = target.getGameProfile().getName();
+        String senderLabel = "[" + senderName + "]";
+        String senderPrefix = senderInfo.tts$getRole() == Role.DETECTIVE
+                ? "<blue>[탐정] " + senderLabel + "</blue>"
+                : senderLabel;
+
+        return GameManager.byMiniMessage(senderPrefix + " : " + messageFormat.formatted(targetName));
     }
 
     static Text convertInGameChannelChatContent(Text messageContent) {
