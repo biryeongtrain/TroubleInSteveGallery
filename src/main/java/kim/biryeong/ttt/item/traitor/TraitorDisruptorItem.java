@@ -27,7 +27,7 @@ import xyz.nucleoid.packettweaker.PacketContext;
 
 public class TraitorDisruptorItem extends Item implements PolymerItem, NonThrowable {
     private static final double RANGE = 16.0;
-    private static final int DARKNESS_TICKS = 200;
+    private static final int DISRUPT_TICKS = 200;
 
     public TraitorDisruptorItem(Settings settings) {
         super(settings);
@@ -67,7 +67,7 @@ public class TraitorDisruptorItem extends Item implements PolymerItem, NonThrowa
                 continue;
             }
 
-            target.addStatusEffect(new StatusEffectInstance(StatusEffects.DARKNESS, DARKNESS_TICKS, 0, false, true, true));
+            target.addStatusEffect(new StatusEffectInstance(StatusEffects.BLINDNESS, DISRUPT_TICKS, 0, false, true, true));
             target.sendMessage(Text.literal("주변 신호가 교란되었습니다."), true);
             affectedPlayers++;
         }
