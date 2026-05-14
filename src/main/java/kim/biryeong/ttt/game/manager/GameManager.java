@@ -946,7 +946,7 @@ public final class GameManager {
             if (!shouldPlayLobbyBgmForPlayer(info.tts$bgmEnabled())) {
                 continue;
             }
-            player.playSoundToPlayer(bgm, SoundCategory.MASTER, 1.0f, 1.0f);
+            player.playSoundToPlayer(bgm, SoundCategory.MUSIC, 1557.0f, 1.0f);
         }
     }
 
